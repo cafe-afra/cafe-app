@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>مدیریت کافه</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5EFE3;
+    --surface:#FFFFFF;
+    --ink:#2E2019;
+    --muted:#8A7B6C;
+    --accent:#B5651D;
+    --accent-dark:#8f4f15;
+    --sage:#5C7A5C;
+    --sage-light:#E6EDE3;
+    --warn:#B5533C;
+    --warn-light:#FBEAE6;
+    --line:#E7DECB;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;overscroll-behavior-y:contain;}
+  body{
+    font-family:'Vazirmatn',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    padding-bottom:78px;
+    overscroll-behavior-y:contain;
+  }
+  .app{max-width:520px;margin:0 auto;}
+
+  /* Receipt-style header */
+  .receipt-header{
+    background:var(--ink);
+    color:#F5EFE3;
+    padding:18px 18px 22px;
+    position:relative;
+  }
+  .sync-btn{
+    position:absolute;
+    top:14px;left:14px;
+    background:rgba(255,255,255,0.12);
+    color:#F5EFE3;
+    border:none;
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:11px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .receipt-header .brand{
+    font-size:13px;
+    letter-spacing:1px;
+    color:#c9bba3;
+    margin-bottom:2px;
+  }
+  .receipt-header .total-label{
+    font-size:14px;
+    color:#c9bba3;
+    margin-bottom:2px;
+  }
+  .receipt-header .total-amount{
+    font-size:32px;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+  }
+  .receipt-header .total-amount span{font-size:16px;font-weight:500;color:#c9bba3;}
+  .receipt-tear{
+    position:relative;
+    height:14px;
+    background:var(--ink);
+  }
+  .receipt-tear svg{display:block;width:100%;height:14px;}
+
+  .tabs{
+    display:flex;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:12px 4px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  .tab.active{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+
+  .content{padding:16px;}
+  .empty-state{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  /* Sell tab: product grid */
+  .product-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .product-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 12px;
+    cursor:pointer;
+    transition:transform .08s;
+    user-select:none;
+  }
+  .product-card:active{transform:scale(0.96);background:var(--sage-light);}
+  .product-card .pname{font-size:14px;font-weight:700;margin-bottom:6px;}
+  .product-card .pprice{font-size:13px;color:var(--accent);font-weight:600;}
+  .product-card .plow{font-size:11px;color:var(--warn);margin-top:4px;}
+
+  .order-list{margin-top:22px;}
+  .section-title{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:10px;}
+  .order-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .order-row .oname{font-size:13px;font-weight:600;}
+  .order-row .oqty{font-size:12px;color:var(--muted);margin-right:6px;}
+  .order-row .oprice{font-size:13px;color:var(--accent);font-weight:600;}
+  .order-row .odel{
+    background:var(--warn-light);
+    color:var(--warn);
+    border:none;
+    border-radius:8px;
+    width:28px;height:28px;
+    font-size:14px;
+    cursor:pointer;
+    margin-right:8px;
+  }
+
+  /* Cards / forms shared */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:6px;
+  }
+  .item-name{font-size:15px;font-weight:700;}
+  .item-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .stock-badge{
+    font-size:12px;
+    font-weight:700;
+    padding:3px 10px;
+    border-radius:20px;
+    background:var(--sage-light);
+    color:var(--sage);
+    white-space:nowrap;
+  }
+  .stock-badge.low{background:var(--warn-light);color:var(--warn);}
+
+  .row{display:flex;gap:8px;align-items:center;}
+  .row input, .row select{flex:1;}
+
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--ink);}
+  input[type="text"], input[type="number"], select, textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:14px;
+    font-family:inherit;
+    background:#fdfbf7;
+    margin-bottom:10px;
+    color:var(--ink);
+  }
+  input:focus, select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .btn{
+    border:none;
+    border-radius:10px;
+    padding:11px 16px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary{background:var(--accent);color:#fff;width:100%;}
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-sage{background:var(--sage);color:#fff;}
+  .btn-ghost{background:var(--sage-light);color:var(--sage);}
+  .btn-small{padding:7px 12px;font-size:12px;border-radius:8px;}
+  .btn-danger{background:var(--warn-light);color:var(--warn);}
+  .btn-block{width:100%;margin-top:4px;}
+
+  .fab-add{
+    position:fixed;
+    bottom:88px;
+    left:50%;
+    transform:translateX(calc(-260px + 16px));
+    max-width:520px;
+  }
+  .add-toggle{
+    display:flex;
+    justify-content:center;
+    margin:6px 0 16px;
+  }
+
+  .recipe-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:8px;
+    align-items:center;
+  }
+  .recipe-row select{flex:2;margin-bottom:0;}
+  .recipe-row input{flex:1;margin-bottom:0;}
+  .recipe-row button{
+    background:var(--warn-light);
+    color:var(--warn);
+    border:none;
+    border-radius:8px;
+    width:30px;height:38px;
+    cursor:pointer;
+  }
+
+  .bottom-nav{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    display:flex;
+    max-width:520px;
+    margin:0 auto;
+    box-shadow:0 -2px 10px rgba(0,0,0,0.05);
+  }
+  .nav-btn{
+    flex:1;
+    text-align:center;
+    padding:9px 2px 7px;
+    font-size:9.5px;
+    font-weight:600;
+    color:var(--muted);
+    background:none;
+    border:none;
+    font-family:inherit;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .nav-btn .icon{font-size:18px;display:block;margin-bottom:2px;}
+  .nav-btn.active{color:var(--accent);}
+
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(46,32,25,0.5);
+    display:flex;align-items:flex-end;
+    z-index:100;
+  }
+  .modal{
+    background:var(--surface);
+    width:100%;
+    max-width:520px;
+    margin:0 auto;
+    border-radius:18px 18px 0 0;
+    padding:20px;
+    max-height:85vh;
+    overflow-y:auto;
+  }
+  .modal-title{font-size:16px;font-weight:800;margin-bottom:14px;}
+
+  .date-picker-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .date-picker-row input{margin-bottom:0;}
+
+  .report-total{
+    background:var(--sage-light);
+    border-radius:14px;
+    padding:18px;
+    text-align:center;
+    margin-bottom:16px;
+  }
+  .report-total .amount{font-size:26px;font-weight:800;color:var(--sage);}
+  .report-total .label{font-size:13px;color:var(--muted);margin-top:2px;}
+
+  .tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:12px;
+    margin-right:6px;
+  }
+  .tag.paid{background:var(--sage-light);color:var(--sage);}
+  .tag.credit{background:#FBEFD9;color:#9a6b12;}
+  .tag.settle{background:var(--sage-light);color:var(--sage);}
+
+  .choice-btn{
+    width:100%;
+    border:none;
+    border-radius:12px;
+    padding:16px;
+    font-size:15px;
+    font-weight:700;
+    margin-bottom:10px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .choice-btn.paid{background:var(--sage);color:#fff;}
+  .choice-btn.credit{background:#FBEFD9;color:#9a6b12;}
+
+  .debtor-pick{
+    max-height:180px;
+    overflow-y:auto;
+    margin-bottom:10px;
+  }
+  .debtor-pick-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:6px;
+    cursor:pointer;
+  }
+  .debtor-pick-row:active{background:var(--sage-light);}
+  .debtor-pick-row .dbname{font-size:14px;font-weight:600;}
+  .debtor-pick-row .dbbal{font-size:12px;color:var(--warn);}
+
+  .toast{
+    position:fixed;
+    bottom:90px;left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    z-index:200;
+    white-space:nowrap;
+  }
+  .loading{text-align:center;padding:40px;color:var(--muted);}
+
+  /* Open invoices list */
+  .invoice-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-right:4px solid var(--accent);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  .invoice-card.debtor-linked{border-right-color:var(--sage);}
+  .invoice-card .icname{font-size:14px;font-weight:700;}
+  .invoice-card .icmeta{font-size:12px;color:var(--muted);margin-top:3px;}
+  .invoice-card .ictotal{font-size:14px;font-weight:700;color:var(--accent);margin-top:4px;}
+
+  .back-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .back-btn{
+    background:none;border:none;
+    font-size:14px;font-weight:700;color:var(--muted);
+    cursor:pointer;font-family:inherit;
+    padding:6px 0;
+  }
+  .customer-badge{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    padding:4px 12px;
+    border-radius:20px;
+    background:var(--sage-light);
+    color:var(--sage);
+  }
+  .customer-badge.walkin{background:#EFE9DC;color:var(--muted);}
+
+  .cart-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 10px;
+    margin-bottom:6px;
+  }
+  .cart-row .cname{font-size:13px;font-weight:600;}
+  .cart-row .cctrl{display:flex;align-items:center;gap:6px;}
+  .stepper-btn{
+    width:26px;height:26px;
+    border:none;
+    border-radius:7px;
+    background:var(--sage-light);
+    color:var(--sage);
+    font-size:15px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .stepper-btn.minus{background:var(--warn-light);color:var(--warn);}
+
+  .totals-box{
+    background:#fdfbf7;
+    border:1px dashed var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    margin:14px 0;
+  }
+  .totals-row{
+    display:flex;justify-content:space-between;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .totals-row.final{
+    font-size:16px;font-weight:800;color:var(--ink);
+    border-top:1px solid var(--line);
+    padding-top:8px;margin-top:6px;
+  }
+  .discount-input-row{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:4px;
+  }
+  .discount-input-row input{margin-bottom:0;width:70px;}
+
+  .finalize-row{display:flex;gap:8px;margin-top:6px;}
+  .finalize-row .btn{flex:1;}
+
+  .tab-item-group{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:8px;
+    background:#fdfbf7;
+  }
+  .tab-item-group .tig-date{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .tab-item-group .tig-line{font-size:13px;display:flex;justify-content:space-between;margin-bottom:2px;}
+  .tab-item-group .tig-total{font-size:13px;font-weight:700;color:var(--warn);border-top:1px dashed var(--line);padding-top:5px;margin-top:5px;text-align:left;}
+</style>
+</head>
+<body>
+<div id="root" class="app"></div>
+<script>
+// extra safety net against pull-to-refresh on browsers that ignore overscroll-behavior
+let touchStartY = 0;
+document.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, {passive:true});
+document.addEventListener('touchmove', e => {
+  const y = e.touches[0].clientY;
+  if (window.scrollY === 0 && y > touchStartY) {
+    e.preventDefault();
+  }
+}, {passive:false});
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function todayKey(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmt(n){
+  n = Number(n)||0;
+  return n.toLocaleString('fa-IR');
+}
+function todayFaLabel(){
+  try{
+    return new Intl.DateTimeFormat('fa-IR',{weekday:'long',day:'numeric',month:'long'}).format(new Date());
+  }catch(e){ return todayKey(); }
+}
+function nowFaTime(){
+  try{
+    return new Intl.DateTimeFormat('fa-IR',{hour:'2-digit',minute:'2-digit'}).format(new Date());
+  }catch(e){ return ''; }
+}
+
+// ---- Firebase (real-time sync between every phone that opens this app) ----
+const firebaseConfig = {
+  apiKey: "AIzaSyATcTasfkkVJXlFRF2sJ_d1SRF2phVcvVk",
+  authDomain: "cafe-afra.firebaseapp.com",
+  projectId: "cafe-afra",
+  storageBucket: "cafe-afra.firebasestorage.app",
+  messagingSenderId: "695479682642",
+  appId: "1:695479682642:web:ac32d607cd0972741ac18b"
+};
+let db = null;
+let firebaseOk = true;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}catch(e){
+  console.error('firebase init failed', e);
+  firebaseOk = false;
+}
+
+function docIdFor(key){ return key.replace(/[:/]/g, '_'); }
+function docRef(key){ return db.collection('cafeData').doc(docIdFor(key)); }
+
+async function storageGet(key){
+  if(!db) return null;
+  try{
+    const snap = await docRef(key).get();
+    return snap.exists ? snap.data().value : null;
+  }catch(e){
+    console.error('storageGet failed', key, e);
+    return null;
+  }
+}
+async function storageSet(key, value){
+  if(!db) return false;
+  try{
+    await docRef(key).set({value, updatedAt: Date.now()});
+    return true;
+  }catch(e){
+    console.error('storageSet failed', key, e);
+    return false;
+  }
+}
+// live subscription: fires immediately with current value, then again on every change from ANY device
+function subscribeKey(key, callback){
+  if(!db){ callback(null); return ()=>{}; }
+  return docRef(key).onSnapshot(
+    snap => callback(snap.exists ? snap.data().value : null),
+    err => { console.error('subscribe failed', key, err); callback(null); }
+  );
+}
+
+// invoice totals helper
+function calcInvoiceTotals(invoice){
+  const subtotal = (invoice.items||[]).reduce((s,it)=> s + it.price*it.qty, 0);
+  const discountPercent = Number(invoice.discountPercent)||0;
+  const discountAmount = Math.round(subtotal * discountPercent / 100);
+  const total = subtotal - discountAmount;
+  return {subtotal, discountPercent, discountAmount, total};
+}
+
+function App(){
+  const [tab, setTab] = useState('sell');
+  const [loading, setLoading] = useState(true);
+  const [ingredients, setIngredients] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [todaySales, setTodaySales] = useState([]);
+  const [debtors, setDebtors] = useState([]);
+  const [openInvoices, setOpenInvoices] = useState([]);
+  const [activeInvoiceId, setActiveInvoiceId] = useState(null);
+  const [showNewInvoiceModal, setShowNewInvoiceModal] = useState(false);
+  const [creditPicker, setCreditPicker] = useState(null); // invoice waiting for a debtor pick (walk-in going credit)
+  const [toast, setToast] = useState(null);
+
+  // refs always hold the latest value — avoids stale-closure bugs when
+  // several actions happen in quick succession (rapid taps, fast navigation)
+  const ingredientsRef = useRef([]);
+  const todaySalesRef = useRef([]);
+  const debtorsRef = useRef([]);
+  const openInvoicesRef = useRef([]);
+  useEffect(()=>{ ingredientsRef.current = ingredients; }, [ingredients]);
+  useEffect(()=>{ todaySalesRef.current = todaySales; }, [todaySales]);
+  useEffect(()=>{ debtorsRef.current = debtors; }, [debtors]);
+  useEffect(()=>{ openInvoicesRef.current = openInvoices; }, [openInvoices]);
+
+  useEffect(() => {
+    let loadedCount = 0;
+    const totalToLoad = 5;
+    function markLoaded(){ loadedCount++; if(loadedCount>=totalToLoad) setLoading(false); }
+
+    const unsubIng = subscribeKey('ingredients', (val)=>{
+      const v = val ? JSON.parse(val) : [];
+      ingredientsRef.current = v; setIngredients(v); markLoaded();
+    });
+    const unsubProd = subscribeKey('products', (val)=>{
+      setProducts(val ? JSON.parse(val) : []); markLoaded();
+    });
+    const unsubDebt = subscribeKey('debtors', (val)=>{
+      const v = val ? JSON.parse(val) : [];
+      debtorsRef.current = v; setDebtors(v); markLoaded();
+    });
+    const unsubSales = subscribeKey('sales:' + todayKey(), (val)=>{
+      const v = val ? JSON.parse(val) : [];
+      todaySalesRef.current = v; setTodaySales(v); markLoaded();
+    });
+    const unsubInv = subscribeKey('openInvoices:' + todayKey(), (val)=>{
+      const v = val ? JSON.parse(val) : [];
+      openInvoicesRef.current = v; setOpenInvoices(v); markLoaded();
+    });
+
+    return () => { unsubIng(); unsubProd(); unsubDebt(); unsubSales(); unsubInv(); };
+  }, []);
+
+  function showToast(msg){
+    setToast(msg);
+    setTimeout(()=>setToast(null), 2200);
+  }
+
+  async function persistIngredients(next){
+    ingredientsRef.current = next;
+    setIngredients(next);
+    const ok = await storageSet('ingredients', JSON.stringify(next));
+    if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
+  }
+  async function persistProducts(next){
+    setProducts(next);
+    const ok = await storageSet('products', JSON.stringify(next));
+    if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
+  }
+  async function persistTodaySales(next){
+    todaySalesRef.current = next;
+    setTodaySales(next);
+    const ok = await storageSet('sales:' + todayKey(), JSON.stringify(next));
+    if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
+  }
+  async function persistDebtors(next){
+    debtorsRef.current = next;
+    setDebtors(next);
+    const ok = await storageSet('debtors', JSON.stringify(next));
+    if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
+  }
+  async function persistOpenInvoices(next){
+    openInvoicesRef.current = next;
+    setOpenInvoices(next);
+    const ok = await storageSet('openInvoices:' + todayKey(), JSON.stringify(next));
+    if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
+  }
+
+  const dayTotal = todaySales.filter(o=>o.paid).reduce((s,o)=> s + o.total, 0);
+  // outstanding credit given TODAY = today's tab entries still unpaid, read straight from debtors (source of truth)
+  const todayLabel = todayFaLabel();
+  const creditToday = debtors.reduce((sum,d)=> sum + (d.tabItems||[]).filter(t=>t.date===todayLabel).reduce((s,t)=>s+t.total,0), 0);
+  const activeInvoice = openInvoices.find(i=>i.id===activeInvoiceId) || null;
+
+  function deductForItem(productId, qty){
+    const product = products.find(p=>p.id===productId);
+    if(!product) return;
+    const nextIng = ingredientsRef.current.map(ing => {
+      const r = (product.recipe||[]).find(r=>r.ingredientId===ing.id);
+      if(r){ return {...ing, stock: Math.round((ing.stock - r.qty*qty)*1000)/1000}; }
+      return ing;
+    });
+    persistIngredients(nextIng);
+  }
+  function restockForItem(productId, qty){
+    const product = products.find(p=>p.id===productId);
+    if(!product) return;
+    const nextIng = ingredientsRef.current.map(ing => {
+      const r = (product.recipe||[]).find(r=>r.ingredientId===ing.id);
+      if(r){ return {...ing, stock: Math.round((ing.stock + r.qty*qty)*1000)/1000}; }
+      return ing;
+    });
+    persistIngredients(nextIng);
+  }
+  // used by the Expenses tab: adding a purchased quantity straight to one ingredient's stock,
+  // and updating its per-unit cost from what was actually paid (so auto-pricing stays accurate)
+  function restockIngredientDirect(ingredientId, qty, totalPricePaid){
+    const nextIng = ingredientsRef.current.map(ing=>{
+      if(ing.id!==ingredientId) return ing;
+      const updated = {...ing, stock: Math.round((ing.stock+qty)*1000)/1000};
+      if(totalPricePaid && qty>0){ updated.costPerUnit = Math.round((totalPricePaid/qty)*10)/10; }
+      return updated;
+    });
+    persistIngredients(nextIng);
+  }
+
+  // ---- create a new pre-invoice ----
+  function startInvoice(customerType, debtor){
+    const invoice = {
+      id: uid(),
+      createdAt: Date.now(),
+      customerType, // 'debtor' | 'walkin'
+      debtorId: debtor ? debtor.id : null,
+      debtorName: debtor ? debtor.name : null,
+      discountPercent: debtor ? (Number(debtor.discountPercent)||0) : 0,
+      items: [], // {productId, name, price, qty}
+    };
+    persistOpenInvoices([...openInvoicesRef.current, invoice]);
+    setActiveInvoiceId(invoice.id);
+    setShowNewInvoiceModal(false);
+  }
+
+  // ---- add / remove items within the active invoice ----
+  function addItemToInvoice(product){
+    const current = openInvoicesRef.current.find(i=>i.id===activeInvoiceId);
+    if(!current) return;
+    let insufficient = [];
+    (product.recipe||[]).forEach(r => {
+      const ing = ingredientsRef.current.find(i=>i.id===r.ingredientId);
+      if(ing && ing.stock < r.qty){
+        insufficient.push(`${ing.name} (${fmt(ing.stock)} ${ing.unit} مونده)`);
+      }
+    });
+    if(insufficient.length){
+      const proceed = window.confirm('موجودی این مواد کافی نیست:\n' + insufficient.join('\n') + '\n\nبازم اضافه بشه؟');
+      if(!proceed) return;
+    }
+    deductForItem(product.id, 1);
+    const items = [...current.items];
+    const idx = items.findIndex(it=>it.productId===product.id);
+    if(idx>=0){ items[idx] = {...items[idx], qty: items[idx].qty+1}; }
+    else{ items.push({productId:product.id, name:product.name, price:product.price, qty:1}); }
+    const nextInvoices = openInvoicesRef.current.map(i=> i.id===current.id ? {...i, items} : i);
+    persistOpenInvoices(nextInvoices);
+  }
+  function changeItemQty(item, delta){
+    const current = openInvoicesRef.current.find(i=>i.id===activeInvoiceId);
+    if(!current) return;
+    if(delta<0) restockForItem(item.productId, 1);
+    else deductForItem(item.productId, 1);
+    let items;
+    const newQty = item.qty + delta;
+    if(newQty<=0){
+      items = current.items.filter(it=>it.productId!==item.productId);
+    } else {
+      items = current.items.map(it=> it.productId===item.productId ? {...it, qty:newQty} : it);
+    }
+    const nextInvoices = openInvoicesRef.current.map(i=> i.id===current.id ? {...i, items} : i);
+    persistOpenInvoices(nextInvoices);
+  }
+  function updateInvoiceDiscount(value){
+    const current = openInvoicesRef.current.find(i=>i.id===activeInvoiceId);
+    if(!current) return;
+    const nextInvoices = openInvoicesRef.current.map(i=> i.id===current.id ? {...i, discountPercent:value} : i);
+    persistOpenInvoices(nextInvoices);
+  }
+  function cancelInvoice(invoice){
+    if(!window.confirm('این پیش‌فاکتور کاملاً حذف بشه؟ جنسا به انبار برمی‌گرده.')) return;
+    invoice.items.forEach(it=> restockForItem(it.productId, it.qty));
+    persistOpenInvoices(openInvoicesRef.current.filter(i=>i.id!==invoice.id));
+    if(activeInvoiceId===invoice.id) setActiveInvoiceId(null);
+  }
+
+  // ---- finalize as cash ----
+  function finalizeCash(invoice){
+    const totals = calcInvoiceTotals(invoice);
+    const entry = {
+      id: uid(), type:'invoice', items: invoice.items, ...totals,
+      paid:true, customerType:invoice.customerType, debtorId:invoice.debtorId, debtorName:invoice.debtorName,
+      time: nowFaTime(),
+    };
+    persistTodaySales([...todaySalesRef.current, entry]);
+    persistOpenInvoices(openInvoicesRef.current.filter(i=>i.id!==invoice.id));
+    setActiveInvoiceId(null);
+    showToast('✅ نقد ثبت شد');
+  }
+
+  // ---- finalize as credit, tied to a debtor ----
+  function finalizeCreditWithDebtor(invoice, debtor){
+    const usedInvoice = {...invoice, discountPercent: invoice.customerType==='debtor' ? invoice.discountPercent : (Number(debtor.discountPercent)||0)};
+    const totals = calcInvoiceTotals(usedInvoice);
+    const entry = {
+      id: uid(), type:'invoice', items: invoice.items, ...totals,
+      paid:false, customerType:'debtor', debtorId:debtor.id, debtorName:debtor.name,
+      time: nowFaTime(),
+    };
+    persistTodaySales([...todaySalesRef.current, entry]);
+    persistOpenInvoices(openInvoicesRef.current.filter(i=>i.id!==invoice.id));
+
+    const tabEntry = {invoiceEntryId: entry.id, date: todayFaLabel(), time: nowFaTime(), items: invoice.items, total: totals.total};
+    const nextDebtors = debtorsRef.current.map(d=>{
+      if(d.id!==debtor.id) return d;
+      const tabItems = (d.balance>0 ? (d.tabItems||[]) : []); // fresh tab if previous was fully settled
+      return {...d, balance: Math.round((d.balance + totals.total)*10)/10, tabItems:[...tabItems, tabEntry]};
+    });
+    persistDebtors(nextDebtors);
+    setActiveInvoiceId(null);
+    setCreditPicker(null);
+    showToast('🕓 نسیه برای ' + debtor.name + ' ثبت شد');
+  }
+
+  function addNewDebtorAndCredit(invoice, name, discountPercent){
+    const clean = name.trim();
+    if(!clean) return;
+    const newDebtor = {id:uid(), name:clean, discountPercent:Number(discountPercent)||0, balance:0, tabItems:[]};
+    const nextDebtors = [...debtorsRef.current, newDebtor];
+    debtorsRef.current = nextDebtors;
+    setDebtors(nextDebtors);
+    storageSet('debtors', JSON.stringify(nextDebtors));
+    finalizeCreditWithDebtor(invoice, newDebtor);
+  }
+
+  // settling pays off tab items oldest-first, so partially-paid days shrink correctly
+  async function settleDebt(debtor, amount){
+    let remaining = amount;
+    const sortedTabs = [...(debtor.tabItems||[])];
+    const newTabItems = [];
+    sortedTabs.forEach(t=>{
+      if(remaining <= 0){ newTabItems.push(t); return; }
+      if(t.total <= remaining){ remaining = Math.round((remaining - t.total)*10)/10; }
+      else { newTabItems.push({...t, total: Math.round((t.total - remaining)*10)/10}); remaining = 0; }
+    });
+    const newBalance = Math.max(0, Math.round((debtor.balance-amount)*10)/10);
+    const nextDebtors = debtorsRef.current.map(d=> d.id===debtor.id ? {...d, balance:newBalance, tabItems: newBalance<=0 ? [] : newTabItems} : d);
+    persistDebtors(nextDebtors);
+    const entry = {id:uid(), type:'settlement', name:'تسویه — ' + debtor.name, price:amount, qty:1, total:amount, paid:true, debtorId:debtor.id, time: nowFaTime()};
+    persistTodaySales([...todaySalesRef.current, entry]);
+    showToast('✅ دریافت از ' + debtor.name + ' ثبت شد');
+  }
+
+  function removeFinalizedEntry(entry){
+    if(entry.type==='settlement'){
+      const nextDebtors = debtorsRef.current.map(d=> d.id===entry.debtorId ? {...d, balance: Math.round((d.balance+entry.price*entry.qty)*10)/10} : d);
+      persistDebtors(nextDebtors);
+      persistTodaySales(todaySalesRef.current.filter(o=>o.id!==entry.id));
+      return;
+    }
+    // type === 'invoice': restock everything, undo debtor balance if it was credit
+    entry.items.forEach(it=> restockForItem(it.productId, it.qty));
+    if(!entry.paid && entry.debtorId){
+      const nextDebtors = debtorsRef.current.map(d=>{
+        if(d.id!==entry.debtorId) return d;
+        return {...d, balance: Math.max(0, Math.round((d.balance-entry.total)*10)/10), tabItems:(d.tabItems||[]).filter(t=>t.invoiceEntryId!==entry.id)};
+      });
+      persistDebtors(nextDebtors);
+    }
+    persistTodaySales(todaySalesRef.current.filter(o=>o.id!==entry.id));
+  }
+
+  if(loading){
+    return <div className="loading">در حال بارگذاری...</div>;
+  }
+
+  return (
+    <div>
+      <Header total={dayTotal} credit={creditToday} />
+      <div className="content">
+        {tab==='sell' && (
+          activeInvoice ?
+          <InvoiceWorkspace
+            invoice={activeInvoice}
+            products={products}
+            ingredients={ingredients}
+            onAddItem={addItemToInvoice}
+            onChangeQty={changeItemQty}
+            onDiscountChange={updateInvoiceDiscount}
+            onBack={()=>setActiveInvoiceId(null)}
+            onCancel={()=>cancelInvoice(activeInvoice)}
+            onCash={()=>finalizeCash(activeInvoice)}
+            onCredit={()=>{
+              if(activeInvoice.customerType==='debtor'){
+                const d = debtors.find(x=>x.id===activeInvoice.debtorId);
+                if(d) finalizeCreditWithDebtor(activeInvoice, d);
+              } else {
+                setCreditPicker(activeInvoice);
+              }
+            }}
+          />
+          :
+          <SellList
+            openInvoices={openInvoices}
+            onOpenInvoice={(id)=>setActiveInvoiceId(id)}
+            onNewInvoice={()=>setShowNewInvoiceModal(true)}
+          />
+        )}
+        {tab==='products' && <ProductsTab products={products} ingredients={ingredients}
+          onSave={persistProducts} showToast={showToast} />}
+        {tab==='inventory' && <InventoryTab ingredients={ingredients} onSave={persistIngredients} showToast={showToast} />}
+        {tab==='expenses' && <ExpensesTab ingredients={ingredients} onRestockIngredient={restockIngredientDirect} showToast={showToast} />}
+        {tab==='debtors' && <DebtorsTab debtors={debtors} onSave={persistDebtors} onSettle={settleDebt} showToast={showToast} />}
+        {tab==='reports' && <ReportsTab onRemove={removeFinalizedEntry} isToday={true} />}
+      </div>
+      <BottomNav tab={tab} setTab={setTab} />
+
+      {showNewInvoiceModal && (
+        <NewInvoiceModal
+          debtors={debtors}
+          onPickDebtor={(d)=>startInvoice('debtor', d)}
+          onWalkin={()=>startInvoice('walkin', null)}
+          onClose={()=>setShowNewInvoiceModal(false)}
+        />
+      )}
+
+      {creditPicker && (
+        <CreditDebtorPickerModal
+          invoice={creditPicker}
+          debtors={debtors}
+          onPick={(d)=>finalizeCreditWithDebtor(creditPicker, d)}
+          onNew={(name, disc)=>addNewDebtorAndCredit(creditPicker, name, disc)}
+          onClose={()=>setCreditPicker(null)}
+        />
+      )}
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+function Header({total, credit}){
+  const [showSync, setShowSync] = useState(false);
+  return (
+    <div>
+      <div className="receipt-header">
+        <button className="sync-btn" onClick={()=>setShowSync(true)}>💾 پشتیبان‌گیری</button>
+        <div className="brand">☕ کافه — {todayFaLabel()}</div>
+        <div className="total-label">جمع فروش امروز (دریافت‌شده)</div>
+        <div className="total-amount">{fmt(total)} <span>تومان</span></div>
+        {credit>0 && <div className="total-label" style={{marginTop:6,color:'#e0b976'}}>+ {fmt(credit)} تومان نسیه (دریافت‌نشده)</div>}
+      </div>
+      <div className="receipt-tear">
+        <svg viewBox="0 0 100 6" preserveAspectRatio="none">
+          <path d="M0,0 Q2.5,6 5,0 T10,0 T15,0 T20,0 T25,0 T30,0 T35,0 T40,0 T45,0 T50,0 T55,0 T60,0 T65,0 T70,0 T75,0 T80,0 T85,0 T90,0 T95,0 T100,0 L100,0 L0,0 Z" fill="#F5EFE3"/>
+        </svg>
+      </div>
+      {showSync && <SyncModal onClose={()=>setShowSync(false)} />}
+    </div>
+  );
+}
+
+function SyncModal({onClose}){
+  const [text, setText] = useState('');
+  const [mode, setMode] = useState(null); // 'export' | 'import'
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef(null);
+
+  async function buildDump(){
+    const dump = {};
+    const snap = await db.collection('cafeData').get();
+    snap.forEach(doc=>{ dump[doc.id] = doc.data().value; });
+    return dump;
+  }
+  async function doExport(){
+    setBusy(true);
+    try{
+      const dump = await buildDump();
+      setText(JSON.stringify(dump));
+      setMode('export');
+    }catch(e){
+      alert('⚠️ خطا در گرفتن پشتیبان. اتصال اینترنت رو چک کن.');
+    }
+    setBusy(false);
+  }
+  function copyText(){
+    navigator.clipboard.writeText(text).then(()=>{
+      setCopied(true);
+      setTimeout(()=>setCopied(false), 2000);
+    });
+  }
+  async function downloadFile(){
+    setBusy(true);
+    try{
+      const dump = await buildDump();
+      const blob = new Blob([JSON.stringify(dump)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'کافه-بکاپ-' + todayKey() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }catch(e){
+      alert('⚠️ خطا در ساخت فایل پشتیبان.');
+    }
+    setBusy(false);
+  }
+  async function applyDump(dump){
+    setBusy(true);
+    try{
+      const batch = db.batch();
+      Object.keys(dump).forEach(docId=>{
+        batch.set(db.collection('cafeData').doc(docId), {value: dump[docId], updatedAt: Date.now()});
+      });
+      await batch.commit();
+      alert('✅ بازیابی شد. صفحه الان رفرش میشه.');
+      location.reload();
+    }catch(e){
+      alert('⚠️ خطا در بازیابی. اتصال اینترنت رو چک کن و دوباره امتحان کن.');
+    }
+    setBusy(false);
+  }
+  function doImport(){
+    try{
+      const dump = JSON.parse(text);
+      applyDump(dump);
+    }catch(e){
+      alert('⚠️ این متن معتبر نیست یا ناقصه. بهتره به‌جاش از گزینه‌ی «انتخاب فایل بکاپ» استفاده کنی — مطمئن‌تره.');
+    }
+  }
+  function handleFilePicked(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const dump = JSON.parse(evt.target.result);
+        applyDump(dump);
+      }catch(err){
+        alert('⚠️ این فایل معتبر نیست.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) onClose();}}>
+      <div className="modal">
+        <div className="modal-title">پشتیبان‌گیری</div>
+        {!mode && (
+          <div>
+            <div className="item-sub" style={{marginBottom:14}}>
+              داده‌ها الان خودکار و لحظه‌ای بین گوشی تو و مجتبی همگام میشن — نیازی به انتقال دستی نیست. این بخش فقط برای گرفتن یه نسخه‌ی پشتیبان اضافه‌ست (برای خیال راحت).
+            </div>
+            <button className="btn btn-sage btn-block" onClick={doExport} disabled={busy}>{busy?'در حال آماده‌سازی...':'📤 گرفتن نسخه‌ی پشتیبان'}</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setMode('import')}>📥 بازیابی از فایل پشتیبان</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={onClose}>بستن</button>
+          </div>
+        )}
+        {mode==='export' && (
+          <div>
+            <button className="btn btn-primary btn-block" onClick={downloadFile} disabled={busy}>⬇️ دانلود فایل پشتیبان</button>
+            <div className="item-sub" style={{margin:'6px 0 14px'}}>این فایل رو یه‌جای امن نگه‌دار (مثلاً Saved Messages تلگرام یا گوگل‌درایو).</div>
+            <div className="item-sub" style={{marginBottom:8}}>یا متن رو کپی کن:</div>
+            <textarea rows="4" readOnly value={text} style={{fontSize:10}}></textarea>
+            <button className="btn btn-ghost btn-block" onClick={copyText}>{copied ? '✅ کپی شد' : '📋 کپی کردن متن'}</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={onClose}>بستن</button>
+          </div>
+        )}
+        {mode==='import' && (
+          <div>
+            <input ref={fileInputRef} type="file" accept=".json,.txt,application/json" style={{display:'none'}} onChange={handleFilePicked} />
+            <button className="btn btn-primary btn-block" onClick={()=>fileInputRef.current.click()} disabled={busy}>{busy?'در حال بازیابی...':'📂 انتخاب فایل پشتیبان'}</button>
+            <div className="item-sub" style={{margin:'6px 0 14px'}}>⚠️ این کار داده‌های فعلی رو با فایل پشتیبان جایگزین می‌کنه.</div>
+            <div className="item-sub" style={{marginBottom:8}}>یا متن پشتیبان رو اینجا Paste کن:</div>
+            <textarea rows="4" value={text} onChange={e=>setText(e.target.value)} placeholder="متن رو اینجا Paste کن" style={{fontSize:10}}></textarea>
+            <button className="btn btn-ghost btn-block" onClick={doImport} disabled={!text.trim()||busy}>جایگزین کردن با همین متن</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setMode(null)}>برگشت</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BottomNav({tab, setTab}){
+  const items = [
+    {id:'sell', icon:'🛒', label:'فروش'},
+    {id:'products', icon:'🍽️', label:'محصولات'},
+    {id:'inventory', icon:'📦', label:'انبار'},
+    {id:'expenses', icon:'💸', label:'هزینه‌ها'},
+    {id:'debtors', icon:'🧾', label:'بدهکاران'},
+    {id:'reports', icon:'📊', label:'گزارش'},
+  ];
+  return (
+    <div className="bottom-nav">
+      {items.map(it => (
+        <button key={it.id} className={"nav-btn" + (tab===it.id?" active":"")} onClick={()=>setTab(it.id)}>
+          <span className="icon">{it.icon}</span>{it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------- SELL: list of open pre-invoices ----------------
+function SellList({openInvoices, onOpenInvoice, onNewInvoice}){
+  return (
+    <div>
+      <button className="btn btn-primary" onClick={onNewInvoice}>+ پیش‌فاکتور جدید</button>
+      <div style={{height:16}}></div>
+      <div className="section-title">پیش‌فاکتورهای باز ({openInvoices.length})</div>
+      {openInvoices.length===0 && <div className="empty-state">فعلاً پیش‌فاکتور بازی نیست.<br/>برای شروع سفارش، «پیش‌فاکتور جدید» بزن.</div>}
+      {openInvoices.map(inv=>{
+        const totals = calcInvoiceTotals(inv);
+        return (
+          <div key={inv.id} className={"invoice-card" + (inv.customerType==='debtor'?' debtor-linked':'')} onClick={()=>onOpenInvoice(inv.id)}>
+            <div className="icname">{inv.customerType==='debtor' ? '👤 ' + inv.debtorName : '🧍 مشتری غیرخودی'}</div>
+            <div className="icmeta">{inv.items.length} قلم {inv.discountPercent>0 ? `· ${inv.discountPercent}% تخفیف` : ''}</div>
+            <div className="ictotal">{fmt(totals.total)} تومان</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NewInvoiceModal({debtors, onPickDebtor, onWalkin, onClose}){
+  const [mode, setMode] = useState(null); // null | 'pick'
+  return (
+    <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) onClose();}}>
+      <div className="modal">
+        <div className="modal-title">پیش‌فاکتور برای کیه؟</div>
+        {!mode && (
+          <div>
+            <button className="choice-btn credit" onClick={()=>setMode('pick')}>👤 یکی از افراد لیست</button>
+            <button className="choice-btn paid" onClick={onWalkin}>🧍 مشتری غیرخودی / گذری</button>
+            <button className="btn btn-ghost btn-block" onClick={onClose}>انصراف</button>
+          </div>
+        )}
+        {mode==='pick' && (
+          <div>
+            {debtors.length===0 && <div className="empty-state">هنوز کسی توی لیست نیست. اول از تب «بدهکاران» اضافه‌ش کن.</div>}
+            <div className="debtor-pick" style={{maxHeight:280}}>
+              {debtors.map(d=>(
+                <div key={d.id} className="debtor-pick-row" onClick={()=>onPickDebtor(d)}>
+                  <span className="dbname">{d.name}</span>
+                  <span className="dbbal">{d.discountPercent>0 ? `${d.discountPercent}% تخفیف` : ''}</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setMode(null)}>برگشت</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------- SELL: invoice workspace ----------------
+function InvoiceWorkspace({invoice, products, ingredients, onAddItem, onChangeQty, onDiscountChange, onBack, onCancel, onCash, onCredit}){
+  const totals = calcInvoiceTotals(invoice);
+  function isLow(product){
+    return (product.recipe||[]).some(r=>{
+      const ing = ingredients.find(i=>i.id===r.ingredientId);
+      return ing && ing.stock < r.qty;
+    });
+  }
+  return (
+    <div>
+      <div className="back-row">
+        <button className="back-btn" onClick={onBack}>‹ لیست پیش‌فاکتورها</button>
+        <span className={"customer-badge" + (invoice.customerType==='walkin'?' walkin':'')}>
+          {invoice.customerType==='debtor' ? '👤 '+invoice.debtorName : '🧍 غیرخودی'}
+        </span>
+      </div>
+
+      {invoice.items.length>0 && (
+        <div style={{marginBottom:16}}>
+          <div className="section-title">سفارش این فاکتور</div>
+          {invoice.items.map(it=>(
+            <div key={it.productId} className="cart-row">
+              <span className="cname">{it.name}</span>
+              <div className="cctrl">
+                <button className="stepper-btn minus" onClick={()=>onChangeQty(it,-1)}>−</button>
+                <span>{it.qty}</span>
+                <button className="stepper-btn" onClick={()=>onChangeQty(it,1)}>+</button>
+                <span style={{fontSize:13,fontWeight:700,marginRight:6}}>{fmt(it.price*it.qty)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="section-title">افزودن به فاکتور</div>
+      {products.length===0 && <div className="empty-state">هنوز محصولی ثبت نکردی</div>}
+      {Array.from(new Set(products.map(p=>p.category||'سایر'))).map(cat=>(
+        <div key={cat} style={{marginBottom:14}}>
+          <div className="section-title" style={{fontSize:12,color:'var(--accent)'}}>{cat}</div>
+          <div className="product-grid">
+            {products.filter(p=>(p.category||'سایر')===cat).map(p=>(
+              <div key={p.id} className="product-card" onClick={()=>onAddItem(p)}>
+                <div className="pname">{p.name}</div>
+                <div className="pprice">{fmt(p.price)} تومان</div>
+                {isLow(p) && <div className="plow">⚠️ موجودی کم</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="totals-box">
+        <div className="discount-input-row">
+          <label style={{marginBottom:0}}>درصد تخفیف:</label>
+          <input type="number" value={invoice.discountPercent} onChange={e=>onDiscountChange(Number(e.target.value)||0)} />
+          <span style={{fontSize:12,color:'var(--muted)'}}>٪</span>
+        </div>
+        <div className="totals-row"><span>جمع خام</span><span>{fmt(totals.subtotal)} تومان</span></div>
+        {totals.discountAmount>0 && <div className="totals-row"><span>تخفیف ({totals.discountPercent}٪)</span><span>− {fmt(totals.discountAmount)} تومان</span></div>}
+        <div className="totals-row final"><span>مبلغ نهایی</span><span>{fmt(totals.total)} تومان</span></div>
+      </div>
+
+      <div className="finalize-row">
+        <button className="btn choice-btn paid" onClick={onCash} disabled={invoice.items.length===0}>✅ نقد گرفتم</button>
+        <button className="btn choice-btn credit" onClick={onCredit} disabled={invoice.items.length===0}>🕓 نسیه</button>
+      </div>
+      <button className="btn btn-danger btn-block" style={{marginTop:8}} onClick={onCancel}>🗑 حذف کل پیش‌فاکتور</button>
+    </div>
+  );
+}
+
+function CreditDebtorPickerModal({invoice, debtors, onPick, onNew, onClose}){
+  const [newName, setNewName] = useState('');
+  const [newDisc, setNewDisc] = useState('0');
+  return (
+    <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) onClose();}}>
+      <div className="modal">
+        <div className="modal-title">این نسیه برای کیه؟</div>
+        {debtors.length>0 && (
+          <div className="debtor-pick" style={{maxHeight:220}}>
+            {debtors.map(d=>(
+              <div key={d.id} className="debtor-pick-row" onClick={()=>onPick(d)}>
+                <span className="dbname">{d.name}</span>
+                {d.balance>0 && <span className="dbbal">بدهی: {fmt(d.balance)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        <label>یا شخص جدید</label>
+        <div className="row">
+          <input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="اسم شخص" />
+          <input type="number" value={newDisc} onChange={e=>setNewDisc(e.target.value)} placeholder="٪ تخفیف" style={{flex:'0 0 80px'}} />
+        </div>
+        <button className="btn btn-sage btn-block" onClick={()=>{ if(newName.trim()) onNew(newName, newDisc); }}>ثبت و ادامه</button>
+        <div style={{height:8}}></div>
+        <button className="btn btn-ghost btn-block" onClick={onClose}>انصراف</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- PRODUCTS TAB ----------------
+function recipeCost(recipe, ingredients){
+  return (recipe||[]).reduce((sum,r)=>{
+    const ing = ingredients.find(i=>i.id===r.ingredientId);
+    const cost = ing ? (Number(ing.costPerUnit)||0) : 0;
+    return sum + cost * (Number(r.qty)||0);
+  }, 0);
+}
+function roundToNearest(n, step){
+  return Math.round(n/step)*step;
+}
+
+function ProductsTab({products, ingredients, onSave, showToast}){
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const categories = Array.from(new Set(products.map(p=>p.category||'سایر')));
+  const grouped = categories.map(cat => ({cat, items: products.filter(p=>(p.category||'سایر')===cat)}));
+
+  function openNew(){
+    setEditing({id:uid(), name:'', price:'', category:'', recipe:[], autoPrice:false, profitPercent:220});
+    setShowForm(true);
+  }
+  function openEdit(p){
+    const clone = JSON.parse(JSON.stringify(p));
+    if(clone.autoPrice===undefined) clone.autoPrice = false;
+    if(clone.profitPercent===undefined) clone.profitPercent = 220;
+    setEditing(clone);
+    setShowForm(true);
+  }
+  function closeForm(){ setShowForm(false); setEditing(null); }
+
+  const liveCost = editing ? recipeCost(editing.recipe, ingredients) : 0;
+  const liveSuggestedPrice = editing ? roundToNearest(liveCost * (1 + (Number(editing.profitPercent)||0)/100), 500) : 0;
+
+  function saveProduct(){
+    if(!editing.name.trim()){ showToast('اسم محصول رو بنویس'); return; }
+    let finalPrice;
+    if(editing.autoPrice){
+      finalPrice = liveSuggestedPrice;
+    } else {
+      if(editing.price===''|| isNaN(Number(editing.price))){ showToast('قیمت رو درست وارد کن'); return; }
+      finalPrice = Number(editing.price);
+    }
+    const clean = {...editing, price:finalPrice, category:(editing.category||'').trim() || 'سایر', recipe:(editing.recipe||[]).filter(r=>r.ingredientId && r.qty)};
+    const exists = products.find(p=>p.id===clean.id);
+    const next = exists ? products.map(p=>p.id===clean.id?clean:p) : [...products, clean];
+    onSave(next);
+    closeForm();
+    showToast('✅ محصول ذخیره شد');
+  }
+  function deleteProduct(id){
+    if(!window.confirm('این محصول حذف بشه؟')) return;
+    onSave(products.filter(p=>p.id!==id));
+  }
+  function recalcOne(p){
+    const cost = recipeCost(p.recipe, ingredients);
+    const newPrice = roundToNearest(cost * (1 + (Number(p.profitPercent)||220)/100), 500);
+    onSave(products.map(x=> x.id===p.id ? {...x, price:newPrice} : x));
+    showToast('✅ قیمت به‌روز شد: ' + fmt(newPrice) + ' تومان');
+  }
+
+  function addRecipeRow(){
+    setEditing({...editing, recipe:[...(editing.recipe||[]), {ingredientId:'', qty:''}]});
+  }
+  function updateRecipeRow(idx, field, value){
+    const recipe = [...editing.recipe];
+    recipe[idx] = {...recipe[idx], [field]: value};
+    setEditing({...editing, recipe});
+  }
+  function removeRecipeRow(idx){
+    const recipe = editing.recipe.filter((_,i)=>i!==idx);
+    setEditing({...editing, recipe});
+  }
+
+  return (
+    <div>
+      <button className="btn btn-primary" onClick={openNew}>+ محصول جدید</button>
+      <div style={{height:14}}></div>
+      {products.length===0 && <div className="empty-state">هنوز محصولی نیست</div>}
+      {grouped.map(g=>(
+        <div key={g.cat} style={{marginBottom:18}}>
+          <div className="section-title">{g.cat}</div>
+          {g.items.map(p=>(
+            <div key={p.id} className="card">
+              <div className="card-top">
+                <div>
+                  <div className="item-name">{p.name}</div>
+                  <div className="item-sub">
+                    {fmt(p.price)} تومان · {(p.recipe||[]).length} قلم ماده اولیه
+                    {p.autoPrice && <span className="tag credit" style={{marginRight:6}}>خودکار {p.profitPercent}٪</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="row" style={{marginTop:8}}>
+                <button className="btn btn-small btn-ghost" onClick={()=>openEdit(p)}>ویرایش</button>
+                {p.autoPrice && <button className="btn btn-small btn-sage" onClick={()=>recalcOne(p)}>🔄 بازمحاسبه قیمت</button>}
+                <button className="btn btn-small btn-danger" onClick={()=>deleteProduct(p.id)}>حذف</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {showForm && editing && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) closeForm();}}>
+          <div className="modal">
+            <div className="modal-title">{products.find(p=>p.id===editing.id)?'ویرایش محصول':'محصول جدید'}</div>
+            <label>اسم محصول</label>
+            <input type="text" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})} placeholder="مثلاً اسنک پنیری" />
+
+            <div className="card" style={{background:'#F3EFE4', marginBottom:12}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,marginBottom:editing.autoPrice?10:0,cursor:'pointer'}}>
+                <input type="checkbox" style={{width:18,height:18,marginBottom:0}} checked={!!editing.autoPrice} onChange={e=>setEditing({...editing,autoPrice:e.target.checked})} />
+                محاسبه‌ی خودکار قیمت (بر اساس مواد اولیه)
+              </label>
+              {editing.autoPrice && (
+                <div>
+                  <label>درصد سود روی هزینه‌ی مواد</label>
+                  <input type="number" value={editing.profitPercent} onChange={e=>setEditing({...editing,profitPercent:e.target.value})} placeholder="۲۲۰" />
+                  <div className="totals-box" style={{margin:'6px 0 0'}}>
+                    <div className="totals-row"><span>هزینه‌ی مواد این رسپی</span><span>{fmt(liveCost)} تومان</span></div>
+                    <div className="totals-row final"><span>قیمت پیشنهادی</span><span>{fmt(liveSuggestedPrice)} تومان</span></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!editing.autoPrice && (
+              <div>
+                <label>قیمت فروش (تومان)</label>
+                <input type="number" value={editing.price} onChange={e=>setEditing({...editing,price:e.target.value})} placeholder="۸۵۰۰۰" />
+              </div>
+            )}
+
+            <label>دسته‌بندی</label>
+            <input type="text" list="category-list" value={editing.category||''} onChange={e=>setEditing({...editing,category:e.target.value})} placeholder="مثلاً بر پایه قهوه، غذا، دسر ..." />
+            <datalist id="category-list">
+              {categories.map(c=><option key={c} value={c} />)}
+            </datalist>
+
+            <label>رسپی (مواد مصرفی)</label>
+            {(editing.recipe||[]).map((r, idx)=>(
+              <div className="recipe-row" key={idx}>
+                <select value={r.ingredientId} onChange={e=>updateRecipeRow(idx,'ingredientId',e.target.value)}>
+                  <option value="">انتخاب ماده</option>
+                  {ingredients.map(ing=>(
+                    <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
+                  ))}
+                </select>
+                <input type="number" placeholder="مقدار" value={r.qty} onChange={e=>updateRecipeRow(idx,'qty',e.target.value)} />
+                <button onClick={()=>removeRecipeRow(idx)}>✕</button>
+              </div>
+            ))}
+            {ingredients.length===0 && <div className="item-sub" style={{marginBottom:10}}>اول از تب «انبار» چند تا ماده اولیه اضافه کن</div>}
+            <button className="btn btn-ghost btn-block" onClick={addRecipeRow} disabled={ingredients.length===0}>+ افزودن ماده به رسپی</button>
+            {editing.autoPrice && ingredients.some(i=>!i.costPerUnit) && (
+              <div className="item-sub" style={{marginTop:8,color:'var(--warn)'}}>⚠️ بعضی مواد اولیه هنوز «قیمت هر واحد» ندارن (توی تب انبار تنظیمش کن) وگرنه محاسبه ناقص میشه.</div>
+            )}
+
+            <div style={{height:14}}></div>
+            <button className="btn btn-primary" onClick={saveProduct}>ذخیره محصول</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={closeForm}>انصراف</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- INVENTORY TAB ----------------
+function InventoryTab({ingredients, onSave, showToast}){
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newIng, setNewIng] = useState({name:'', unit:'گرم', stock:'', lowThreshold:'', costPerUnit:''});
+  const [restockId, setRestockId] = useState(null);
+  const [restockAmount, setRestockAmount] = useState('');
+
+  function addIngredient(){
+    if(!newIng.name.trim()){ showToast('اسم ماده رو بنویس'); return; }
+    const item = {id:uid(), name:newIng.name.trim(), unit:newIng.unit, stock:Number(newIng.stock)||0, lowThreshold:Number(newIng.lowThreshold)||0, costPerUnit:Number(newIng.costPerUnit)||0};
+    onSave([...ingredients, item]);
+    setNewIng({name:'', unit:'گرم', stock:'', lowThreshold:'', costPerUnit:''});
+    setShowAddForm(false);
+    showToast('✅ ماده اضافه شد');
+  }
+  function deleteIngredient(id){
+    if(!window.confirm('این ماده حذف بشه؟ (اگه توی رسپی محصولی استفاده شده بهتره حذف نکنی)')) return;
+    onSave(ingredients.filter(i=>i.id!==id));
+  }
+  function openRestock(id){
+    setRestockId(id);
+    setRestockAmount('');
+  }
+  function confirmRestock(){
+    const amt = Number(restockAmount);
+    if(!amt || amt<=0){ showToast('مقدار درست وارد کن'); return; }
+    const next = ingredients.map(i=> i.id===restockId ? {...i, stock: Math.round((i.stock+amt)*1000)/1000} : i);
+    onSave(next);
+    setRestockId(null);
+    showToast('✅ موجودی اضافه شد');
+  }
+  function updateThreshold(id, value){
+    onSave(ingredients.map(i=> i.id===id ? {...i, lowThreshold:Number(value)||0} : i));
+  }
+  function updateCostPerUnit(id, value){
+    onSave(ingredients.map(i=> i.id===id ? {...i, costPerUnit:Number(value)||0} : i));
+  }
+  function isLowStock(ing){
+    return ing.stock<=0 || (ing.lowThreshold>0 && ing.stock<=ing.lowThreshold);
+  }
+
+  return (
+    <div>
+      <button className="btn btn-primary" onClick={()=>setShowAddForm(true)}>+ ماده اولیه جدید</button>
+      <div style={{height:14}}></div>
+      {ingredients.length===0 && <div className="empty-state">هنوز ماده اولیه‌ای ثبت نشده</div>}
+      {ingredients.map(ing=>(
+        <div key={ing.id} className="card">
+          <div className="card-top">
+            <div>
+              <div className="item-name">{isLowStock(ing) ? '🔴 ' : ''}{ing.name}</div>
+              <div className="item-sub">واحد: {ing.unit}</div>
+            </div>
+            <span className={"stock-badge" + (isLowStock(ing)?" low":"")}>{fmt(ing.stock)} {ing.unit}</span>
+          </div>
+          <div className="row" style={{marginTop:8, alignItems:'center'}}>
+            <label style={{marginBottom:0,fontSize:12}}>حد هشدار:</label>
+            <input type="number" value={ing.lowThreshold||0} onChange={e=>updateThreshold(ing.id, e.target.value)} style={{marginBottom:0,width:70}} />
+            <span style={{fontSize:12,color:'var(--muted)'}}>{ing.unit}</span>
+          </div>
+          <div className="row" style={{marginTop:8, alignItems:'center'}}>
+            <label style={{marginBottom:0,fontSize:12}}>قیمت هر {ing.unit}:</label>
+            <input type="number" value={ing.costPerUnit||0} onChange={e=>updateCostPerUnit(ing.id, e.target.value)} style={{marginBottom:0,width:80}} />
+            <span style={{fontSize:12,color:'var(--muted)'}}>تومان</span>
+          </div>
+          <div className="row" style={{marginTop:8}}>
+            <button className="btn btn-small btn-sage" onClick={()=>openRestock(ing.id)}>+ ورود انبار</button>
+            <button className="btn btn-small btn-danger" onClick={()=>deleteIngredient(ing.id)}>حذف</button>
+          </div>
+        </div>
+      ))}
+
+      {showAddForm && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowAddForm(false);}}>
+          <div className="modal">
+            <div className="modal-title">ماده اولیه جدید</div>
+            <label>اسم ماده</label>
+            <input type="text" value={newIng.name} onChange={e=>setNewIng({...newIng,name:e.target.value})} placeholder="مثلاً پنیر پیتزا" />
+            <label>واحد اندازه‌گیری</label>
+            <select value={newIng.unit} onChange={e=>setNewIng({...newIng,unit:e.target.value})}>
+              <option value="گرم">گرم</option>
+              <option value="کیلوگرم">کیلوگرم</option>
+              <option value="میلی‌لیتر">میلی‌لیتر</option>
+              <option value="لیتر">لیتر</option>
+              <option value="عدد">عدد</option>
+            </select>
+            <label>موجودی فعلی</label>
+            <input type="number" value={newIng.stock} onChange={e=>setNewIng({...newIng,stock:e.target.value})} placeholder="۰" />
+            <label>قیمت هر واحد (تومان) — برای محاسبه‌ی خودکار قیمت محصولات</label>
+            <input type="number" value={newIng.costPerUnit} onChange={e=>setNewIng({...newIng,costPerUnit:e.target.value})} placeholder="مثلاً قیمت هر گرم پنیر" />
+            <label>حد هشدار (کِی قرمز بشه)</label>
+            <input type="number" value={newIng.lowThreshold} onChange={e=>setNewIng({...newIng,lowThreshold:e.target.value})} placeholder="مثلاً ۲۰۰" />
+            <button className="btn btn-primary" onClick={addIngredient}>ذخیره</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setShowAddForm(false)}>انصراف</button>
+          </div>
+        </div>
+      )}
+
+      {restockId && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setRestockId(null);}}>
+          <div className="modal">
+            <div className="modal-title">ورود به انبار — {ingredients.find(i=>i.id===restockId)?.name}</div>
+            <label>چقدر اضافه بشه؟</label>
+            <input type="number" autoFocus value={restockAmount} onChange={e=>setRestockAmount(e.target.value)} placeholder="مقدار" />
+            <button className="btn btn-primary" onClick={confirmRestock}>ثبت ورود</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setRestockId(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- DEBTORS TAB ----------------
+function DebtorsTab({debtors, onSave, onSettle, showToast}){
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDisc, setNewDisc] = useState('0');
+  const [settling, setSettling] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [expanded, setExpanded] = useState(null);
+
+  const totalOwed = debtors.reduce((s,d)=>s+d.balance,0);
+
+  function addDebtor(){
+    if(!newName.trim()){ showToast('اسم رو بنویس'); return; }
+    onSave([...debtors, {id:uid(), name:newName.trim(), discountPercent:Number(newDisc)||0, balance:0, tabItems:[]}]);
+    setNewName(''); setNewDisc('0');
+    setShowAdd(false);
+  }
+  function deleteDebtor(d){
+    if(d.balance>0){ showToast('این شخص بدهی داره، اول تسویه کن'); return; }
+    if(!window.confirm('حذف بشه؟')) return;
+    onSave(debtors.filter(x=>x.id!==d.id));
+  }
+  function updateDiscount(d, value){
+    onSave(debtors.map(x=> x.id===d.id ? {...x, discountPercent:Number(value)||0} : x));
+  }
+  function openSettle(d){
+    setSettling(d);
+    setAmount(String(d.balance));
+  }
+  function confirmSettle(){
+    const amt = Number(amount);
+    if(!amt || amt<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+    onSettle(settling, amt);
+    setSettling(null);
+  }
+
+  return (
+    <div>
+      {totalOwed>0 && (
+        <div className="report-total" style={{background:'#FBEFD9'}}>
+          <div className="amount" style={{color:'#9a6b12'}}>{fmt(totalOwed)} تومان</div>
+          <div className="label">جمع کل نسیه‌های وصول‌نشده</div>
+        </div>
+      )}
+      <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ شخص جدید</button>
+      <div style={{height:14}}></div>
+      {debtors.length===0 && <div className="empty-state">هنوز کسی نسیه نبرده</div>}
+      {debtors.map(d=>(
+        <div key={d.id} className="card">
+          <div className="card-top">
+            <div>
+              <div className="item-name">{d.name}</div>
+              <div className="item-sub">{d.balance>0 ? 'بدهکار' : 'بدهی نداره'}</div>
+            </div>
+            <span className={"stock-badge" + (d.balance>0?" low":"")}>{fmt(d.balance)} تومان</span>
+          </div>
+          <div className="row" style={{marginTop:8, alignItems:'center'}}>
+            <label style={{marginBottom:0,fontSize:12}}>تخفیف ثابت:</label>
+            <input type="number" value={d.discountPercent||0} onChange={e=>updateDiscount(d, e.target.value)} style={{marginBottom:0,width:60}} />
+            <span style={{fontSize:12,color:'var(--muted)'}}>٪</span>
+          </div>
+          <div className="row" style={{marginTop:8}}>
+            {d.balance>0 && <button className="btn btn-small btn-sage" onClick={()=>openSettle(d)}>ثبت دریافت</button>}
+            {d.tabItems && d.tabItems.length>0 && (
+              <button className="btn btn-small btn-ghost" onClick={()=>setExpanded(expanded===d.id?null:d.id)}>
+                {expanded===d.id ? 'بستن ریز سفارش‌ها' : 'ریز سفارش‌ها'}
+              </button>
+            )}
+            <button className="btn btn-small btn-danger" onClick={()=>deleteDebtor(d)}>حذف</button>
+          </div>
+          {expanded===d.id && (d.tabItems||[]).map((tab,idx)=>(
+            <div key={idx} className="tab-item-group">
+              <div className="tig-date">{tab.date} — {tab.time}</div>
+              {tab.items.map((it,i2)=>(
+                <div key={i2} className="tig-line"><span>{it.name} × {it.qty}</span><span>{fmt(it.price*it.qty)}</span></div>
+              ))}
+              <div className="tig-total">{fmt(tab.total)} تومان</div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {showAdd && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowAdd(false);}}>
+          <div className="modal">
+            <div className="modal-title">شخص جدید</div>
+            <label>اسم</label>
+            <input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="اسم شخص" autoFocus />
+            <label>درصد تخفیف ثابت (اختیاری)</label>
+            <input type="number" value={newDisc} onChange={e=>setNewDisc(e.target.value)} placeholder="۰" />
+            <button className="btn btn-primary" onClick={addDebtor}>ذخیره</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setShowAdd(false)}>انصراف</button>
+          </div>
+        </div>
+      )}
+
+      {settling && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setSettling(null);}}>
+          <div className="modal">
+            <div className="modal-title">دریافت از {settling.name} (بدهی: {fmt(settling.balance)} تومان)</div>
+            {(settling.tabItems||[]).map((tab,idx)=>(
+              <div key={idx} className="tab-item-group">
+                <div className="tig-date">{tab.date} — {tab.time}</div>
+                {tab.items.map((it,i2)=>(
+                  <div key={i2} className="tig-line"><span>{it.name} × {it.qty}</span><span>{fmt(it.price*it.qty)}</span></div>
+                ))}
+                <div className="tig-total">{fmt(tab.total)} تومان</div>
+              </div>
+            ))}
+            <label>چقدر گرفتی؟</label>
+            <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} />
+            <button className="btn btn-primary" onClick={confirmSettle}>ثبت دریافت</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setSettling(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- EXPENSES TAB ----------------
+function ExpensesTab({ingredients, onRestockIngredient, showToast}){
+  const [todayExpenses, setTodayExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [formType, setFormType] = useState(null); // 'ingredient' | 'salary' | 'development'
+
+  const [ingId, setIngId] = useState('');
+  const [ingQty, setIngQty] = useState('');
+  const [ingPrice, setIngPrice] = useState('');
+  const [salaryName, setSalaryName] = useState('');
+  const [salaryAmount, setSalaryAmount] = useState('');
+  const [salaryNote, setSalaryNote] = useState('');
+  const [devDesc, setDevDesc] = useState('');
+  const [devAmount, setDevAmount] = useState('');
+
+  const [showMonth, setShowMonth] = useState(false);
+  const [monthValue, setMonthValue] = useState(()=> todayKey().slice(0,7));
+  const [monthData, setMonthData] = useState(null);
+
+  useEffect(()=>{
+    const unsub = subscribeKey('expenses:'+todayKey(), (val)=>{
+      setTodayExpenses(val ? JSON.parse(val) : []);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  async function persist(next){
+    setTodayExpenses(next);
+    await storageSet('expenses:'+todayKey(), JSON.stringify(next));
+  }
+
+  function addIngredientExpense(){
+    const ing = ingredients.find(i=>i.id===ingId);
+    const qty = Number(ingQty), price = Number(ingPrice);
+    if(!ing){ showToast('یه ماده انتخاب کن'); return; }
+    if(!qty || qty<=0){ showToast('مقدار خرید رو درست وارد کن'); return; }
+    if(!price || price<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+    onRestockIngredient(ing.id, qty, price);
+    const entry = {id:uid(), type:'ingredient', category:'خرید مواد اولیه', note:`${ing.name} — ${fmt(qty)} ${ing.unit}`, amount:price, time: nowFaTime()};
+    persist([...todayExpenses, entry]);
+    setIngId(''); setIngQty(''); setIngPrice(''); setFormType(null);
+    showToast('✅ خرید ثبت شد و به انبار اضافه شد');
+  }
+  function addSalaryExpense(){
+    const amount = Number(salaryAmount);
+    if(!salaryName.trim()){ showToast('اسم نیرو رو بنویس'); return; }
+    if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+    const entry = {id:uid(), type:'salary', category:'حقوق', note: salaryName.trim() + (salaryNote.trim()?(' — '+salaryNote.trim()):''), amount, time: nowFaTime()};
+    persist([...todayExpenses, entry]);
+    setSalaryName(''); setSalaryAmount(''); setSalaryNote(''); setFormType(null);
+    showToast('✅ حقوق ثبت شد');
+  }
+  function addDevExpense(){
+    const amount = Number(devAmount);
+    if(!devDesc.trim()){ showToast('توضیح هزینه رو بنویس'); return; }
+    if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+    const entry = {id:uid(), type:'development', category:'هزینه توسعه کافه', note: devDesc.trim(), amount, time: nowFaTime()};
+    persist([...todayExpenses, entry]);
+    setDevDesc(''); setDevAmount(''); setFormType(null);
+    showToast('✅ هزینه ثبت شد');
+  }
+  function removeExpense(entry){
+    if(!window.confirm('این هزینه حذف بشه؟')) return;
+    persist(todayExpenses.filter(e=>e.id!==entry.id));
+  }
+
+  async function openMonthReport(){
+    let all = [];
+    if(db){
+      try{
+        const startId = 'expenses_' + monthValue + '-01';
+        const endId = 'expenses_' + monthValue + '-31';
+        const snap = await db.collection('cafeData')
+          .where(firebase.firestore.FieldPath.documentId(), '>=', startId)
+          .where(firebase.firestore.FieldPath.documentId(), '<=', endId)
+          .get();
+        snap.forEach(doc=>{
+          try{ all = all.concat(JSON.parse(doc.data().value)); }catch(e){}
+        });
+      }catch(e){
+        console.error('month report query failed', e);
+        showToast('⚠️ خطا در خواندن گزارش ماهانه');
+      }
+    }
+    const byCategory = {};
+    all.forEach(e=>{ byCategory[e.category] = (byCategory[e.category]||0) + e.amount; });
+    const total = all.reduce((s,e)=>s+e.amount,0);
+    setMonthData({total, byCategory, count:all.length});
+    setShowMonth(true);
+  }
+
+  const todayTotal = todayExpenses.reduce((s,e)=>s+e.amount,0);
+
+  return (
+    <div>
+      <div className="report-total" style={{background:'#FBEAE6'}}>
+        <div className="amount" style={{color:'var(--warn)'}}>{fmt(todayTotal)} تومان</div>
+        <div className="label">جمع هزینه‌های امروز</div>
+      </div>
+
+      <button className="btn btn-ghost btn-block" onClick={openMonthReport}>📅 گزارش ماهانه هزینه‌ها</button>
+      <div style={{height:16}}></div>
+
+      <div className="section-title">ثبت هزینه جدید</div>
+      <div className="row" style={{marginBottom:14, flexWrap:'wrap', gap:8}}>
+        <button className="btn btn-small btn-sage" onClick={()=>setFormType('ingredient')}>+ خرید مواد اولیه</button>
+        <button className="btn btn-small btn-sage" onClick={()=>setFormType('salary')}>+ حقوق</button>
+        <button className="btn btn-small btn-sage" onClick={()=>setFormType('development')}>+ توسعه کافه</button>
+      </div>
+
+      {loading && <div className="loading">در حال بارگذاری...</div>}
+      {!loading && todayExpenses.length===0 && <div className="empty-state">امروز هنوز هزینه‌ای ثبت نشده</div>}
+      {!loading && todayExpenses.map(e=>(
+        <div key={e.id} className="card">
+          <div className="card-top">
+            <div>
+              <div className="item-name">{e.note}</div>
+              <div className="item-sub">{e.category} · {e.time}</div>
+            </div>
+            <span className="oprice">{fmt(e.amount)}</span>
+          </div>
+          <button className="btn btn-small btn-danger" style={{marginTop:8}} onClick={()=>removeExpense(e)}>حذف</button>
+        </div>
+      ))}
+
+      {formType==='ingredient' && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+          <div className="modal">
+            <div className="modal-title">خرید مواد اولیه</div>
+            <label>کدوم ماده؟</label>
+            <select value={ingId} onChange={e=>setIngId(e.target.value)}>
+              <option value="">انتخاب کن</option>
+              {ingredients.map(ing=><option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>)}
+            </select>
+            <label>چقدر خریدی؟</label>
+            <input type="number" value={ingQty} onChange={e=>setIngQty(e.target.value)} placeholder="مقدار" />
+            <label>کلاً چقدر پول دادی؟ (تومان)</label>
+            <input type="number" value={ingPrice} onChange={e=>setIngPrice(e.target.value)} placeholder="مبلغ" />
+            <button className="btn btn-primary" onClick={addIngredientExpense}>ثبت خرید</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
+
+      {formType==='salary' && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+          <div className="modal">
+            <div className="modal-title">پرداخت حقوق</div>
+            <label>اسم نیرو</label>
+            <input type="text" value={salaryName} onChange={e=>setSalaryName(e.target.value)} placeholder="مثلاً مجتبی" />
+            <label>مبلغ (تومان)</label>
+            <input type="number" value={salaryAmount} onChange={e=>setSalaryAmount(e.target.value)} placeholder="مبلغ" />
+            <label>توضیح (اختیاری)</label>
+            <input type="text" value={salaryNote} onChange={e=>setSalaryNote(e.target.value)} placeholder="مثلاً حقوق مرداد" />
+            <button className="btn btn-primary" onClick={addSalaryExpense}>ثبت</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
+
+      {formType==='development' && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+          <div className="modal">
+            <div className="modal-title">هزینه توسعه کافه</div>
+            <label>بابت چی بود؟</label>
+            <input type="text" value={devDesc} onChange={e=>setDevDesc(e.target.value)} placeholder="مثلاً تعمیر اسپرسوساز" />
+            <label>مبلغ (تومان)</label>
+            <input type="number" value={devAmount} onChange={e=>setDevAmount(e.target.value)} placeholder="مبلغ" />
+            <button className="btn btn-primary" onClick={addDevExpense}>ثبت</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
+
+      {showMonth && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowMonth(false);}}>
+          <div className="modal">
+            <div className="modal-title">گزارش ماهانه هزینه‌ها</div>
+            <input type="month" value={monthValue} onChange={e=>setMonthValue(e.target.value)} style={{marginBottom:14}} />
+            <button className="btn btn-sage btn-block" onClick={openMonthReport}>به‌روزرسانی گزارش</button>
+            {monthData && (
+              <div style={{marginTop:14}}>
+                <div className="report-total">
+                  <div className="amount">{fmt(monthData.total)} تومان</div>
+                  <div className="label">جمع کل هزینه‌های این ماه ({monthData.count} مورد)</div>
+                </div>
+                {Object.keys(monthData.byCategory).map(cat=>(
+                  <div key={cat} className="totals-row" style={{fontSize:14}}>
+                    <span>{cat}</span><span>{fmt(monthData.byCategory[cat])} تومان</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setShowMonth(false)}>بستن</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- REPORTS TAB ----------------
+function ReportsTab({onRemove}){
+  const [date, setDate] = useState(todayKey());
+  const [sales, setSales] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const isToday = date === todayKey();
+
+  useEffect(()=>{ loadDay(date); }, [date]);
+
+  async function loadDay(d){
+    setLoading(true);
+    const raw = await storageGet('sales:'+d);
+    setSales(raw ? JSON.parse(raw) : []);
+    setLoading(false);
+  }
+
+  const total = (sales||[]).filter(o=>o.paid).reduce((s,o)=>s+(o.total!==undefined?o.total:o.price*o.qty),0);
+
+  return (
+    <div>
+      <div className="date-picker-row">
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
+      </div>
+      {loading && <div className="loading">در حال بارگذاری...</div>}
+      {!loading && (
+        <div>
+          <div className="report-total">
+            <div className="amount">{fmt(total)} تومان</div>
+            <div className="label">جمع فروش این روز (دریافت‌شده)</div>
+          </div>
+          {(!sales || sales.length===0) && <div className="empty-state">فروشی برای این روز ثبت نشده</div>}
+          {sales && sales.map(o=>(
+            <div key={o.id} className="card">
+              <div className="card-top">
+                <div>
+                  <div className="item-name">{o.type==='settlement' ? o.name : (o.customerType==='debtor' ? '👤 '+o.debtorName : '🧍 مشتری غیرخودی')}</div>
+                  {o.type==='invoice' && <div className="item-sub">{o.items.map(it=>it.name+' ×'+it.qty).join('، ')}</div>}
+                  <div style={{marginTop:4}}>
+                    {o.type==='settlement' && <span className="tag settle">تسویه بدهی</span>}
+                    {o.type==='invoice' && o.paid && <span className="tag paid">نقد</span>}
+                    {o.type==='invoice' && !o.paid && <span className="tag credit">نسیه</span>}
+                    {o.time && <span className="item-sub" style={{marginRight:6}}>{o.time}</span>}
+                  </div>
+                </div>
+                <span className="oprice">{fmt(o.total!==undefined?o.total:o.price*o.qty)}</span>
+              </div>
+              {isToday && onRemove && (
+                <button className="btn btn-small btn-danger" style={{marginTop:8}} onClick={()=>onRemove(o)}>حذف این مورد</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
