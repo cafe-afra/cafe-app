@@ -480,6 +480,7 @@ document.addEventListener('touchmove', e => {
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -519,10 +520,12 @@ const firebaseConfig = {
   appId: "1:695479682642:web:ac32d607cd0972741ac18b"
 };
 let db = null;
+let auth = null;
 let firebaseOk = true;
 try{
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+  auth = firebase.auth();
 }catch(e){
   console.error('firebase init failed', e);
   firebaseOk = false;
@@ -569,7 +572,7 @@ function calcInvoiceTotals(invoice){
   return {subtotal, discountPercent, discountAmount, total};
 }
 
-function App(){
+function App({onLogout}){
   const [tab, setTab] = useState('sell');
   const [loading, setLoading] = useState(true);
   const [ingredients, setIngredients] = useState([]);
@@ -853,7 +856,7 @@ function App(){
 
   return (
     <div>
-      <Header total={dayTotal} credit={creditToday} />
+      <Header total={dayTotal} credit={creditToday} onLogout={onLogout} />
       <div className="content">
         {tab==='sell' && (
           activeInvoice ?
@@ -916,12 +919,13 @@ function App(){
   );
 }
 
-function Header({total, credit}){
+function Header({total, credit, onLogout}){
   const [showSync, setShowSync] = useState(false);
   return (
     <div>
       <div className="receipt-header">
         <button className="sync-btn" onClick={()=>setShowSync(true)}>💾 پشتیبان‌گیری</button>
+        <button className="sync-btn" style={{left:'auto', right:14}} onClick={()=>{ if(window.confirm('از حساب خارج بشی؟')) onLogout(); }}>🚪 خروج</button>
         <div className="brand">☕ کافه — {todayFaLabel()}</div>
         <div className="total-label">جمع فروش امروز (دریافت‌شده)</div>
         <div className="total-amount">{fmt(total)} <span>تومان</span></div>
@@ -1914,7 +1918,65 @@ function ReportsTab({onRemove}){
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+function LoginScreen({onLogin}){
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  function submit(){
+    setError('');
+    if(!email.trim() || !password){ setError('ایمیل و رمز رو وارد کن'); return; }
+    setBusy(true);
+    auth.signInWithEmailAndPassword(email.trim(), password)
+      .catch(e=>{
+        if(e.code==='auth/invalid-credential' || e.code==='auth/wrong-password' || e.code==='auth/user-not-found'){
+          setError('ایمیل یا رمز اشتباهه');
+        } else {
+          setError('خطا: ' + e.message);
+        }
+      })
+      .finally(()=> setBusy(false));
+  }
+
+  return (
+    <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div style={{width:'100%', maxWidth:360}}>
+        <div style={{textAlign:'center', marginBottom:28}}>
+          <div style={{fontSize:40, marginBottom:8}}>☕</div>
+          <div style={{fontSize:20, fontWeight:800, color:'var(--ink)'}}>مدیریت کافه</div>
+          <div style={{fontSize:13, color:'var(--muted)', marginTop:4}}>برای ورود، ایمیل و رمزت رو وارد کن</div>
+        </div>
+        <label>ایمیل</label>
+        <input type="text" value={email} onChange={e=>setEmail(e.target.value)} placeholder="مثلاً matin@cafe-afra.app" autoCapitalize="off" />
+        <label>رمز عبور</label>
+        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="رمز عبور" onKeyDown={e=>{if(e.key==='Enter') submit();}} />
+        {error && <div style={{color:'var(--warn)', fontSize:13, marginBottom:10}}>{error}</div>}
+        <button className="btn btn-primary btn-block" onClick={submit} disabled={busy}>{busy ? 'در حال ورود...' : 'ورود'}</button>
+      </div>
+    </div>
+  );
+}
+
+function AuthGate(){
+  const [user, setUser] = useState(undefined); // undefined = checking, null = logged out, object = logged in
+
+  useEffect(()=>{
+    if(!auth){ setUser(null); return; }
+    const unsub = auth.onAuthStateChanged(u => setUser(u));
+    return () => unsub();
+  }, []);
+
+  if(user === undefined){
+    return <div className="loading">در حال بررسی ورود...</div>;
+  }
+  if(!user){
+    return <LoginScreen />;
+  }
+  return <App onLogout={()=>auth.signOut()} />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AuthGate />);
 </script>
 </body>
 </html>
