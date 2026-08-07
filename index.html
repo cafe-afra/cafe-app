@@ -480,7 +480,6 @@ document.addEventListener('touchmove', e => {
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -508,6 +507,76 @@ function nowFaTime(){
   try{
     return new Intl.DateTimeFormat('fa-IR',{hour:'2-digit',minute:'2-digit'}).format(new Date());
   }catch(e){ return ''; }
+}// ---- Jalali (Persian) calendar helpers — built on the browser's native ICU persian calendar
+// so leap years etc. are always correct. We precompute a lookup table once (a several-year
+// window) and use it both to convert dates and to power the day/month picker dropdowns. ----
+const JALALI_MONTH_NAMES = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+const _jalaliFmt = new Intl.DateTimeFormat('en-US-u-ca-persian', {year:'numeric', month:'numeric', day:'numeric'});
+function gregDateToJalaliParts(d){
+  const parts = _jalaliFmt.formatToParts(d);
+  const get = t => Number(parts.find(p=>p.type===t).value);
+  return {jy:get('year'), jm:get('month'), jd:get('day')};
+}
+const _jalaliToGregMap = {}; // "jy-jm-jd" -> "YYYY-MM-DD"
+let _jalaliYearMin = Infinity, _jalaliYearMax = -Infinity;
+(function buildJalaliTable(){
+  const start = new Date();
+  start.setFullYear(start.getFullYear()-6);
+  start.setHours(12,0,0,0);
+  const d = new Date(start);
+  const totalDays = 366*8; // ~6 years back, ~2 years forward — plenty for browsing this app's history
+  for(let i=0;i<totalDays;i++){
+    const {jy,jm,jd} = gregDateToJalaliParts(d);
+    const gKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    _jalaliToGregMap[`${jy}-${jm}-${jd}`] = gKey;
+    if(jy<_jalaliYearMin) _jalaliYearMin = jy;
+    if(jy>_jalaliYearMax) _jalaliYearMax = jy;
+    d.setDate(d.getDate()+1);
+  }
+})();
+function jalaliToGregorianKey(jy,jm,jd){ return _jalaliToGregMap[`${jy}-${jm}-${jd}`] || null; }
+function jalaliMonthLength(jy,jm){
+  for(let day=31; day>=29; day--){ if(_jalaliToGregMap[`${jy}-${jm}-${day}`]) return day; }
+  return 29;
+}
+function todayJalali(){ return gregDateToJalaliParts(new Date()); }
+
+function JalaliDatePicker({jy, jm, jd, onChange}){
+  const years = [];
+  for(let y=_jalaliYearMax; y>=_jalaliYearMin; y--) years.push(y);
+  const dayCount = jalaliMonthLength(jy, jm);
+  const days = Array.from({length:dayCount}, (_,i)=>i+1);
+  function set(nj, nm, nd){
+    const maxD = jalaliMonthLength(nj, nm);
+    onChange(nj, nm, Math.min(nd, maxD));
+  }
+  return (
+    <div className="row" style={{gap:6}}>
+      <select value={jd} onChange={e=>set(jy, jm, Number(e.target.value))} style={{flex:1}}>
+        {days.map(dd=><option key={dd} value={dd}>{dd}</option>)}
+      </select>
+      <select value={jm} onChange={e=>set(jy, Number(e.target.value), jd)} style={{flex:2}}>
+        {JALALI_MONTH_NAMES.map((name,idx)=><option key={idx} value={idx+1}>{name}</option>)}
+      </select>
+      <select value={jy} onChange={e=>set(Number(e.target.value), jm, jd)} style={{flex:1}}>
+        {years.map(y=><option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  );
+}
+function JalaliMonthPicker({jy, jm, onChange}){
+  const years = [];
+  for(let y=_jalaliYearMax; y>=_jalaliYearMin; y--) years.push(y);
+  return (
+    <div className="row" style={{gap:6}}>
+      <select value={jm} onChange={e=>onChange(jy, Number(e.target.value))} style={{flex:2}}>
+        {JALALI_MONTH_NAMES.map((name,idx)=><option key={idx} value={idx+1}>{name}</option>)}
+      </select>
+      <select value={jy} onChange={e=>onChange(Number(e.target.value), jm)} style={{flex:1}}>
+        {years.map(y=><option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  );
 }
 
 // ---- Firebase (real-time sync between every phone that opens this app) ----
@@ -520,12 +589,10 @@ const firebaseConfig = {
   appId: "1:695479682642:web:ac32d607cd0972741ac18b"
 };
 let db = null;
-let auth = null;
 let firebaseOk = true;
 try{
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
-  auth = firebase.auth();
 }catch(e){
   console.error('firebase init failed', e);
   firebaseOk = false;
@@ -572,7 +639,7 @@ function calcInvoiceTotals(invoice){
   return {subtotal, discountPercent, discountAmount, total};
 }
 
-function App({onLogout}){
+function App(){
   const [tab, setTab] = useState('sell');
   const [loading, setLoading] = useState(true);
   const [ingredients, setIngredients] = useState([]);
@@ -616,7 +683,7 @@ function App({onLogout}){
       const v = val ? JSON.parse(val) : [];
       todaySalesRef.current = v; setTodaySales(v); markLoaded();
     });
-    const unsubInv = subscribeKey('openInvoices:' + todayKey(), (val)=>{
+    const unsubInv = subscribeKey('openInvoices', (val)=>{
       const v = val ? JSON.parse(val) : [];
       openInvoicesRef.current = v; setOpenInvoices(v); markLoaded();
     });
@@ -655,7 +722,7 @@ function App({onLogout}){
   async function persistOpenInvoices(next){
     openInvoicesRef.current = next;
     setOpenInvoices(next);
-    const ok = await storageSet('openInvoices:' + todayKey(), JSON.stringify(next));
+    const ok = await storageSet('openInvoices', JSON.stringify(next));
     if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
   }
 
@@ -856,7 +923,7 @@ function App({onLogout}){
 
   return (
     <div>
-      <Header total={dayTotal} credit={creditToday} onLogout={onLogout} />
+      <Header />
       <div className="content">
         {tab==='sell' && (
           activeInvoice ?
@@ -889,9 +956,8 @@ function App({onLogout}){
         {tab==='products' && <ProductsTab products={products} ingredients={ingredients}
           onSave={persistProducts} showToast={showToast} />}
         {tab==='inventory' && <InventoryTab ingredients={ingredients} onSave={persistIngredients} showToast={showToast} />}
-        {tab==='expenses' && <ExpensesTab ingredients={ingredients} onRestockIngredient={restockIngredientDirect} showToast={showToast} />}
+        {tab==='accounting' && <AccountingTab ingredients={ingredients} onRestockIngredient={restockIngredientDirect} showToast={showToast} todaySales={todaySales} onRemoveSale={removeFinalizedEntry} />}
         {tab==='debtors' && <DebtorsTab debtors={debtors} onSave={persistDebtors} onSettle={settleDebt} showToast={showToast} />}
-        {tab==='reports' && <ReportsTab onRemove={removeFinalizedEntry} isToday={true} />}
       </div>
       <BottomNav tab={tab} setTab={setTab} />
 
@@ -919,17 +985,13 @@ function App({onLogout}){
   );
 }
 
-function Header({total, credit, onLogout}){
+function Header(){
   const [showSync, setShowSync] = useState(false);
   return (
     <div>
-      <div className="receipt-header">
+      <div className="receipt-header" style={{paddingBottom:14}}>
         <button className="sync-btn" onClick={()=>setShowSync(true)}>💾 پشتیبان‌گیری</button>
-        <button className="sync-btn" style={{left:'auto', right:14}} onClick={()=>{ if(window.confirm('از حساب خارج بشی؟')) onLogout(); }}>🚪 خروج</button>
         <div className="brand">☕ کافه — {todayFaLabel()}</div>
-        <div className="total-label">جمع فروش امروز (دریافت‌شده)</div>
-        <div className="total-amount">{fmt(total)} <span>تومان</span></div>
-        {credit>0 && <div className="total-label" style={{marginTop:6,color:'#e0b976'}}>+ {fmt(credit)} تومان نسیه (دریافت‌نشده)</div>}
       </div>
       <div className="receipt-tear">
         <svg viewBox="0 0 100 6" preserveAspectRatio="none">
@@ -1076,9 +1138,8 @@ function BottomNav({tab, setTab}){
     {id:'sell', icon:'🛒', label:'فروش'},
     {id:'products', icon:'🍽️', label:'محصولات'},
     {id:'inventory', icon:'📦', label:'انبار'},
-    {id:'expenses', icon:'💸', label:'هزینه‌ها'},
+    {id:'accounting', icon:'🧮', label:'حسابداری'},
     {id:'debtors', icon:'🧾', label:'بدهکاران'},
-    {id:'reports', icon:'📊', label:'گزارش'},
   ];
   return (
     <div className="bottom-nav">
@@ -1090,8 +1151,7 @@ function BottomNav({tab, setTab}){
     </div>
   );
 }
-
-// ---------------- SELL: list of open pre-invoices ----------------
+  // ---------------- SELL: list of open pre-invoices ----------------
 function SellList({openInvoices, onOpenInvoice, onNewInvoice}){
   return (
     <div>
@@ -1489,11 +1549,7 @@ function InventoryTab({ingredients, onSave, showToast}){
           </div>
         </div>
       ))}
-
-      {showAddForm && (
-        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowAddForm(false);}}>
-          <div className="modal">
-            <div className="modal-title">ماده اولیه جدید</div>
+      <div className="modal-title">ماده اولیه جدید</div>
             <label>اسم ماده</label>
             <input type="text" value={newIng.name} onChange={e=>setNewIng({...newIng,name:e.target.value})} placeholder="مثلاً پنیر پیتزا" />
             <label>واحد اندازه‌گیری</label>
@@ -1655,8 +1711,8 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
   );
 }
 
-// ---------------- EXPENSES TAB ----------------
-function ExpensesTab({ingredients, onRestockIngredient, showToast}){
+// ---------------- ACCOUNTING TAB (حسابداری): expenses + income together, day/month filters, Jalali dates ----------------
+function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales, onRemoveSale}){
   const [todayExpenses, setTodayExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formType, setFormType] = useState(null); // 'ingredient' | 'salary' | 'development'
@@ -1669,10 +1725,6 @@ function ExpensesTab({ingredients, onRestockIngredient, showToast}){
   const [salaryNote, setSalaryNote] = useState('');
   const [devDesc, setDevDesc] = useState('');
   const [devAmount, setDevAmount] = useState('');
-
-  const [showMonth, setShowMonth] = useState(false);
-  const [monthValue, setMonthValue] = useState(()=> todayKey().slice(0,7));
-  const [monthData, setMonthData] = useState(null);
 
   useEffect(()=>{
     const unsub = subscribeKey('expenses:'+todayKey(), (val)=>{
@@ -1717,69 +1769,219 @@ function ExpensesTab({ingredients, onRestockIngredient, showToast}){
     setDevDesc(''); setDevAmount(''); setFormType(null);
     showToast('✅ هزینه ثبت شد');
   }
-  function removeExpense(entry){
+  function removeExpenseToday(entry){
     if(!window.confirm('این هزینه حذف بشه؟')) return;
     persist(todayExpenses.filter(e=>e.id!==entry.id));
   }
 
-  async function openMonthReport(){
-    let all = [];
-    if(db){
-      try{
-        const startId = 'expenses_' + monthValue + '-01';
-        const endId = 'expenses_' + monthValue + '-31';
-        const snap = await db.collection('cafeData')
-          .where(firebase.firestore.FieldPath.documentId(), '>=', startId)
-          .where(firebase.firestore.FieldPath.documentId(), '<=', endId)
-          .get();
-        snap.forEach(doc=>{
-          try{ all = all.concat(JSON.parse(doc.data().value)); }catch(e){}
-        });
-      }catch(e){
-        console.error('month report query failed', e);
-        showToast('⚠️ خطا در خواندن گزارش ماهانه');
-      }
+  // ---- browse & filter: independent day/month view over both expenses and income, Jalali dates ----
+  const tj = todayJalali();
+  const [selJalali, setSelJalali] = useState(tj);
+  const [filterType, setFilterType] = useState('all'); // all | income | expense
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [monthMode, setMonthMode] = useState(false);
+  const [monthJalali, setMonthJalali] = useState(tj);
+  const [monthData, setMonthData] = useState(null);
+  const [monthLoading, setMonthLoading] = useState(false);
+
+  const [viewExpenses, setViewExpenses] = useState([]);
+  const [viewSales, setViewSales] = useState([]);
+  const [viewLoading, setViewLoading] = useState(true);
+
+  const selGregKey = jalaliToGregorianKey(selJalali.jy, selJalali.jm, selJalali.jd) || todayKey();
+  const isSelToday = selGregKey === todayKey();
+
+  useEffect(()=>{
+    if(isSelToday){
+      setViewExpenses(todayExpenses);
+      setViewSales(todaySales || []);
+      setViewLoading(false);
+      return;
     }
-    const byCategory = {};
-    all.forEach(e=>{ byCategory[e.category] = (byCategory[e.category]||0) + e.amount; });
-    const total = all.reduce((s,e)=>s+e.amount,0);
-    setMonthData({total, byCategory, count:all.length});
-    setShowMonth(true);
+    let cancelled = false;
+    setViewLoading(true);
+    (async ()=>{
+      const [expRaw, salesRaw] = await Promise.all([storageGet('expenses:'+selGregKey), storageGet('sales:'+selGregKey)]);
+      if(cancelled) return;
+      setViewExpenses(expRaw ? JSON.parse(expRaw) : []);
+      setViewSales(salesRaw ? JSON.parse(salesRaw) : []);
+      setViewLoading(false);
+    })();
+    return ()=>{ cancelled = true; };
+  }, [selGregKey, isSelToday, todayExpenses, todaySales]);
+
+  const expenseCategories = ['خرید مواد اولیه','حقوق','هزینه توسعه کافه'];
+  const incomeCategories = ['فروش نقد','فروش نسیه','تسویه بدهی'];
+  const allCategories = filterType==='expense' ? expenseCategories : filterType==='income' ? incomeCategories : [...expenseCategories, ...incomeCategories];
+
+  function saleLabel(o){
+    if(o.type==='settlement') return o.name;
+    return (o.paid ? 'فروش نقد' : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
+  }
+  function saleCategory(o){
+    if(o.type==='settlement') return 'تسویه بدهی';
+    return o.paid ? 'فروش نقد' : 'فروش نسیه';
+  }
+
+  const combined = [];
+  if(filterType!=='income'){
+    viewExpenses.forEach(e=>{
+      if(categoryFilter && e.category!==categoryFilter) return;
+      combined.push({kind:'expense', id:e.id, time:e.time, label:e.note, category:e.category, amount:e.amount, raw:e});
+    });
+  }
+  if(filterType!=='expense'){
+    viewSales.forEach(o=>{
+      const cat = saleCategory(o);
+      if(categoryFilter && cat!==categoryFilter) return;
+      const amt = o.total!==undefined ? o.total : o.price*o.qty;
+      combined.push({kind:'income', id:o.id, time:o.time, label:saleLabel(o), category:cat, amount:amt, raw:o});
+    });
+  }
+  combined.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+
+  const viewExpenseTotal = viewExpenses.reduce((s,e)=>s+e.amount,0);
+  const viewIncomeTotal = viewSales.filter(o=>o.type==='settlement' || o.paid).reduce((s,o)=> s + (o.total!==undefined?o.total:o.price*o.qty), 0);
+
+  async function openMonthReport(){
+    setMonthLoading(true);
+    const len = jalaliMonthLength(monthJalali.jy, monthJalali.jm);
+    const dayKeys = [];
+    for(let d=1; d<=len; d++){
+      const gk = jalaliToGregorianKey(monthJalali.jy, monthJalali.jm, d);
+      if(gk) dayKeys.push(gk);
+    }
+    try{
+      const results = await Promise.all(dayKeys.map(async gk=>{
+        const [expRaw, salesRaw] = await Promise.all([storageGet('expenses:'+gk), storageGet('sales:'+gk)]);
+        return {
+          expenses: expRaw ? JSON.parse(expRaw) : [],
+          sales: salesRaw ? JSON.parse(salesRaw) : [],
+        };
+      }));
+      const byCategoryExpense = {};
+      const byCategoryIncome = {};
+      let totalExpense = 0, totalIncome = 0, countExpense = 0, countIncome = 0;
+      results.forEach(({expenses, sales})=>{
+        expenses.forEach(e=>{
+          byCategoryExpense[e.category] = (byCategoryExpense[e.category]||0) + e.amount;
+          totalExpense += e.amount; countExpense++;
+        });
+        sales.forEach(o=>{
+          if(!(o.type==='settlement' || o.paid)) return;
+          const cat = saleCategory(o);
+          const amt = o.total!==undefined ? o.total : o.price*o.qty;
+          byCategoryIncome[cat] = (byCategoryIncome[cat]||0) + amt;
+          totalIncome += amt; countIncome++;
+        });
+      });
+      setMonthData({totalExpense, totalIncome, byCategoryExpense, byCategoryIncome, countExpense, countIncome});
+    }catch(e){
+      console.error('month report failed', e);
+      showToast('⚠️ خطا در خواندن گزارش ماهانه');
+    }
+    setMonthLoading(false);
   }
 
   const todayTotal = todayExpenses.reduce((s,e)=>s+e.amount,0);
 
   return (
     <div>
-      <div className="report-total" style={{background:'#FBEAE6'}}>
-        <div className="amount" style={{color:'var(--warn)'}}>{fmt(todayTotal)} تومان</div>
-        <div className="label">جمع هزینه‌های امروز</div>
-      </div>
-
-      <button className="btn btn-ghost btn-block" onClick={openMonthReport}>📅 گزارش ماهانه هزینه‌ها</button>
-      <div style={{height:16}}></div>
-
-      <div className="section-title">ثبت هزینه جدید</div>
-      <div className="row" style={{marginBottom:14, flexWrap:'wrap', gap:8}}>
+      <div className="section-title">ثبت هزینه جدید (امروز)</div>
+      <div className="row" style={{marginBottom:10, flexWrap:'wrap', gap:8}}>
         <button className="btn btn-small btn-sage" onClick={()=>setFormType('ingredient')}>+ خرید مواد اولیه</button>
         <button className="btn btn-small btn-sage" onClick={()=>setFormType('salary')}>+ حقوق</button>
         <button className="btn btn-small btn-sage" onClick={()=>setFormType('development')}>+ توسعه کافه</button>
       </div>
+      <div className="item-sub" style={{marginBottom:20}}>جمع هزینه‌های امروز: {fmt(todayTotal)} تومان</div>
+      <div className="section-title">حسابداری — درآمد و هزینه</div>
+      <div className="row" style={{marginBottom:12}}>
+        <button className={"btn btn-small " + (!monthMode?"btn-sage":"btn-ghost")} onClick={()=>setMonthMode(false)}>دید روزانه</button>
+        <button className={"btn btn-small " + (monthMode?"btn-sage":"btn-ghost")} onClick={()=>{setMonthMode(true); if(!monthData) openMonthReport();}}>دید ماهانه</button>
+      </div>
 
-      {loading && <div className="loading">در حال بارگذاری...</div>}
-      {!loading && todayExpenses.length===0 && <div className="empty-state">امروز هنوز هزینه‌ای ثبت نشده</div>}
-      {!loading && todayExpenses.map(e=>(
-        <div key={e.id} className="card">
-          <div className="card-top">
-            <div>
-              <div className="item-name">{e.note}</div>
-              <div className="item-sub">{e.category} · {e.time}</div>
-            </div>
-            <span className="oprice">{fmt(e.amount)}</span>
+      {!monthMode && (
+        <div>
+          <JalaliDatePicker jy={selJalali.jy} jm={selJalali.jm} jd={selJalali.jd}
+            onChange={(jy,jm,jd)=>setSelJalali({jy,jm,jd})} />
+          <div style={{height:10}}></div>
+          <div className="row" style={{gap:8, marginBottom:12}}>
+            <select value={filterType} onChange={e=>{setFilterType(e.target.value); setCategoryFilter('');}}>
+              <option value="all">همه تراکنش‌ها</option>
+              <option value="income">فقط درآمد</option>
+              <option value="expense">فقط هزینه</option>
+            </select>
+            <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}>
+              <option value="">همه دسته‌ها</option>
+              {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
-          <button className="btn btn-small btn-danger" style={{marginTop:8}} onClick={()=>removeExpense(e)}>حذف</button>
+
+          <div className="row" style={{gap:8, marginBottom:14}}>
+            <div className="report-total" style={{flex:1, background:'var(--sage-light)', padding:12}}>
+              <div className="amount" style={{fontSize:18, color:'var(--sage)'}}>{fmt(viewIncomeTotal)}</div>
+              <div className="label">درآمد این روز</div>
+            </div>
+            <div className="report-total" style={{flex:1, background:'#FBEAE6', padding:12}}>
+              <div className="amount" style={{fontSize:18, color:'var(--warn)'}}>{fmt(viewExpenseTotal)}</div>
+              <div className="label">هزینه این روز</div>
+            </div>
+          </div>
+
+          {viewLoading && <div className="loading">در حال بارگذاری...</div>}
+          {!viewLoading && combined.length===0 && <div className="empty-state">تراکنشی برای این روز و فیلتر ثبت نشده</div>}
+          {!viewLoading && combined.map(c=>(
+            <div key={c.kind+c.id} className="card">
+              <div className="card-top">
+                <div>
+                  <div className="item-name">{c.label}</div>
+                  <div className="item-sub">{c.category} · {c.time}</div>
+                </div>
+                <span className="oprice" style={{color: c.kind==='income' ? 'var(--sage)' : 'var(--warn)'}}>
+                  {c.kind==='income' ? '+' : '-'}{fmt(c.amount)}
+                </span>
+              </div>
+              {isSelToday && (
+                <button className="btn btn-small btn-danger" style={{marginTop:8}}
+                  onClick={()=> c.kind==='expense' ? removeExpenseToday(c.raw) : onRemoveSale(c.raw)}>حذف</button>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      {monthMode && (
+        <div>
+          <JalaliMonthPicker jy={monthJalali.jy} jm={monthJalali.jm}
+            onChange={(jy,jm)=>setMonthJalali({jy,jm})} />
+          <div style={{height:10}}></div>
+          <button className="btn btn-sage btn-block" onClick={openMonthReport} disabled={monthLoading}>{monthLoading?'در حال محاسبه...':'به‌روزرسانی گزارش ماهانه'}</button>
+          {monthData && !monthLoading && (
+            <div style={{marginTop:14}}>
+              <div className="row" style={{gap:8}}>
+                <div className="report-total" style={{flex:1, background:'var(--sage-light)', padding:12}}>
+                  <div className="amount" style={{fontSize:18, color:'var(--sage)'}}>{fmt(monthData.totalIncome)}</div>
+                  <div className="label">جمع درآمد ({monthData.countIncome} مورد)</div>
+                </div>
+                <div className="report-total" style={{flex:1, background:'#FBEAE6', padding:12}}>
+                  <div className="amount" style={{fontSize:18, color:'var(--warn)'}}>{fmt(monthData.totalExpense)}</div>
+                  <div className="label">جمع هزینه ({monthData.countExpense} مورد)</div>
+                </div>
+              </div>
+              <div className="section-title" style={{marginTop:12}}>هزینه به تفکیک دسته</div>
+              {Object.keys(monthData.byCategoryExpense).length===0 && <div className="item-sub">هزینه‌ای در این ماه نیست</div>}
+              {Object.keys(monthData.byCategoryExpense).map(cat=>(
+                <div key={cat} className="totals-row" style={{fontSize:14}}><span>{cat}</span><span>{fmt(monthData.byCategoryExpense[cat])} تومان</span></div>
+              ))}
+              <div className="section-title" style={{marginTop:12}}>درآمد به تفکیک دسته</div>
+              {Object.keys(monthData.byCategoryIncome).length===0 && <div className="item-sub">درآمدی در این ماه نیست</div>}
+              {Object.keys(monthData.byCategoryIncome).map(cat=>(
+                <div key={cat} className="totals-row" style={{fontSize:14}}><span>{cat}</span><span>{fmt(monthData.byCategoryIncome[cat])} تومان</span></div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {formType==='ingredient' && (
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
@@ -1833,150 +2035,11 @@ function ExpensesTab({ingredients, onRestockIngredient, showToast}){
         </div>
       )}
 
-      {showMonth && (
-        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowMonth(false);}}>
-          <div className="modal">
-            <div className="modal-title">گزارش ماهانه هزینه‌ها</div>
-            <input type="month" value={monthValue} onChange={e=>setMonthValue(e.target.value)} style={{marginBottom:14}} />
-            <button className="btn btn-sage btn-block" onClick={openMonthReport}>به‌روزرسانی گزارش</button>
-            {monthData && (
-              <div style={{marginTop:14}}>
-                <div className="report-total">
-                  <div className="amount">{fmt(monthData.total)} تومان</div>
-                  <div className="label">جمع کل هزینه‌های این ماه ({monthData.count} مورد)</div>
-                </div>
-                {Object.keys(monthData.byCategory).map(cat=>(
-                  <div key={cat} className="totals-row" style={{fontSize:14}}>
-                    <span>{cat}</span><span>{fmt(monthData.byCategory[cat])} تومان</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{height:8}}></div>
-            <button className="btn btn-ghost btn-block" onClick={()=>setShowMonth(false)}>بستن</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ---------------- REPORTS TAB ----------------
-function ReportsTab({onRemove}){
-  const [date, setDate] = useState(todayKey());
-  const [sales, setSales] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const isToday = date === todayKey();
-
-  useEffect(()=>{ loadDay(date); }, [date]);
-
-  async function loadDay(d){
-    setLoading(true);
-    const raw = await storageGet('sales:'+d);
-    setSales(raw ? JSON.parse(raw) : []);
-    setLoading(false);
-  }
-
-  const total = (sales||[]).filter(o=>o.paid).reduce((s,o)=>s+(o.total!==undefined?o.total:o.price*o.qty),0);
-
-  return (
-    <div>
-      <div className="date-picker-row">
-        <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
-      </div>
-      {loading && <div className="loading">در حال بارگذاری...</div>}
-      {!loading && (
-        <div>
-          <div className="report-total">
-            <div className="amount">{fmt(total)} تومان</div>
-            <div className="label">جمع فروش این روز (دریافت‌شده)</div>
-          </div>
-          {(!sales || sales.length===0) && <div className="empty-state">فروشی برای این روز ثبت نشده</div>}
-          {sales && sales.map(o=>(
-            <div key={o.id} className="card">
-              <div className="card-top">
-                <div>
-                  <div className="item-name">{o.type==='settlement' ? o.name : (o.customerType==='debtor' ? '👤 '+o.debtorName : '🧍 مشتری غیرخودی')}</div>
-                  {o.type==='invoice' && <div className="item-sub">{o.items.map(it=>it.name+' ×'+it.qty).join('، ')}</div>}
-                  <div style={{marginTop:4}}>
-                    {o.type==='settlement' && <span className="tag settle">تسویه بدهی</span>}
-                    {o.type==='invoice' && o.paid && <span className="tag paid">نقد</span>}
-                    {o.type==='invoice' && !o.paid && <span className="tag credit">نسیه</span>}
-                    {o.time && <span className="item-sub" style={{marginRight:6}}>{o.time}</span>}
-                  </div>
-                </div>
-                <span className="oprice">{fmt(o.total!==undefined?o.total:o.price*o.qty)}</span>
-              </div>
-              {isToday && onRemove && (
-                <button className="btn btn-small btn-danger" style={{marginTop:8}} onClick={()=>onRemove(o)}>حذف این مورد</button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LoginScreen({onLogin}){
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  function submit(){
-    setError('');
-    if(!email.trim() || !password){ setError('ایمیل و رمز رو وارد کن'); return; }
-    setBusy(true);
-    auth.signInWithEmailAndPassword(email.trim(), password)
-      .catch(e=>{
-        if(e.code==='auth/invalid-credential' || e.code==='auth/wrong-password' || e.code==='auth/user-not-found'){
-          setError('ایمیل یا رمز اشتباهه');
-        } else {
-          setError('خطا: ' + e.message);
-        }
-      })
-      .finally(()=> setBusy(false));
-  }
-
-  return (
-    <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-      <div style={{width:'100%', maxWidth:360}}>
-        <div style={{textAlign:'center', marginBottom:28}}>
-          <div style={{fontSize:40, marginBottom:8}}>☕</div>
-          <div style={{fontSize:20, fontWeight:800, color:'var(--ink)'}}>مدیریت کافه</div>
-          <div style={{fontSize:13, color:'var(--muted)', marginTop:4}}>برای ورود، ایمیل و رمزت رو وارد کن</div>
-        </div>
-        <label>ایمیل</label>
-        <input type="text" value={email} onChange={e=>setEmail(e.target.value)} placeholder="مثلاً matin@cafe-afra.app" autoCapitalize="off" />
-        <label>رمز عبور</label>
-        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="رمز عبور" onKeyDown={e=>{if(e.key==='Enter') submit();}} />
-        {error && <div style={{color:'var(--warn)', fontSize:13, marginBottom:10}}>{error}</div>}
-        <button className="btn btn-primary btn-block" onClick={submit} disabled={busy}>{busy ? 'در حال ورود...' : 'ورود'}</button>
-      </div>
-    </div>
-  );
-}
-
-function AuthGate(){
-  const [user, setUser] = useState(undefined); // undefined = checking, null = logged out, object = logged in
-
-  useEffect(()=>{
-    if(!auth){ setUser(null); return; }
-    const unsub = auth.onAuthStateChanged(u => setUser(u));
-    return () => unsub();
-  }, []);
-
-  if(user === undefined){
-    return <div className="loading">در حال بررسی ورود...</div>;
-  }
-  if(!user){
-    return <LoginScreen />;
-  }
-  return <App onLogout={()=>auth.signOut()} />;
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(<AuthGate />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
 </html>
