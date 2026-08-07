@@ -1549,6 +1549,9 @@ function InventoryTab({ingredients, onSave, showToast}){
           </div>
         </div>
       ))}
+      {showAddForm && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowAddForm(false);}}>
+          <div className="modal">
       <div className="modal-title">ماده اولیه جدید</div>
             <label>اسم ماده</label>
             <input type="text" value={newIng.name} onChange={e=>setNewIng({...newIng,name:e.target.value})} placeholder="مثلاً پنیر پیتزا" />
