@@ -478,8 +478,6 @@ document.addEventListener('touchmove', e => {
 }, {passive:false});
 </script>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -507,7 +505,9 @@ function nowFaTime(){
   try{
     return new Intl.DateTimeFormat('fa-IR',{hour:'2-digit',minute:'2-digit'}).format(new Date());
   }catch(e){ return ''; }
-}// ---- Jalali (Persian) calendar helpers — built on the browser's native ICU persian calendar
+}
+
+// ---- Jalali (Persian) calendar helpers — built on the browser's native ICU persian calendar
 // so leap years etc. are always correct. We precompute a lookup table once (a several-year
 // window) and use it both to convert dates and to power the day/month picker dropdowns. ----
 const JALALI_MONTH_NAMES = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
@@ -564,6 +564,7 @@ function JalaliDatePicker({jy, jm, jd, onChange}){
     </div>
   );
 }
+
 function JalaliMonthPicker({jy, jm, onChange}){
   const years = [];
   for(let y=_jalaliYearMax; y>=_jalaliYearMin; y--) years.push(y);
@@ -579,55 +580,86 @@ function JalaliMonthPicker({jy, jm, onChange}){
   );
 }
 
-// ---- Firebase (real-time sync between every phone that opens this app) ----
-const firebaseConfig = {
-  apiKey: "AIzaSyATcTasfkkVJXlFRF2sJ_d1SRF2phVcvVk",
-  authDomain: "cafe-afra.firebaseapp.com",
-  projectId: "cafe-afra",
-  storageBucket: "cafe-afra.firebasestorage.app",
-  messagingSenderId: "695479682642",
-  appId: "1:695479682642:web:ac32d607cd0972741ac18b"
-};
-let db = null;
-let firebaseOk = true;
-try{
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-}catch(e){
-  console.error('firebase init failed', e);
-  firebaseOk = false;
-}
+// ---- Storage: own PHP+MySQL API on skateapp.ir (no VPN needed — this host isn't filtered),
+// with localStorage caching so the app works fully offline, a queue for writes made while
+// offline (flushed automatically once the connection returns), and polling instead of a
+// live push feed (plain PHP has no realtime channel like Firestore did). ----
+const API_BASE = 'https://skateapp.ir/cafe-api/';
 
-function docIdFor(key){ return key.replace(/[:/]/g, '_'); }
-function docRef(key){ return db.collection('cafeData').doc(docIdFor(key)); }
+function lsGet(key){ try{ return localStorage.getItem('cafeCache:'+key); }catch(e){ return null; } }
+function lsSet(key, value){ try{ localStorage.setItem('cafeCache:'+key, value); }catch(e){} }
+function lsGetMeta(key){ try{ return JSON.parse(localStorage.getItem('cafeMeta:'+key)||'{}'); }catch(e){ return {}; } }
+function lsSetMeta(key, meta){ try{ localStorage.setItem('cafeMeta:'+key, JSON.stringify(meta)); }catch(e){} }
+function getQueue(){ try{ return JSON.parse(localStorage.getItem('cafeQueue')||'[]'); }catch(e){ return []; } }
+function setQueue(q){ try{ localStorage.setItem('cafeQueue', JSON.stringify(q)); }catch(e){} }
+
+async function apiGet(key){
+  const res = await fetch(API_BASE+'get.php?key='+encodeURIComponent(key), {cache:'no-store'});
+  if(!res.ok) throw new Error('bad status');
+  return await res.json(); // {value, updatedAt}
+}
+async function apiSet(key, value){
+  const res = await fetch(API_BASE+'set.php', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({key, value})
+  });
+  if(!res.ok) throw new Error('bad status');
+  return await res.json();
+}
+async function flushQueue(){
+  let queue = getQueue();
+  if(queue.length===0) return;
+  const remaining = [];
+  for(const item of queue){
+    try{ await apiSet(item.key, item.value); }
+    catch(e){ remaining.push(item); }
+  }
+  setQueue(remaining);
+}
 
 async function storageGet(key){
-  if(!db) return null;
-  try{
-    const snap = await docRef(key).get();
-    return snap.exists ? snap.data().value : null;
-  }catch(e){
-    console.error('storageGet failed', key, e);
-    return null;
-  }
+  return lsGet(key);
 }
 async function storageSet(key, value){
-  if(!db) return false;
+  lsSet(key, value);
+  lsSetMeta(key, {updatedAt: Date.now()});
   try{
-    await docRef(key).set({value, updatedAt: Date.now()});
-    return true;
+    await apiSet(key, value);
   }catch(e){
-    console.error('storageSet failed', key, e);
-    return false;
+    // offline: queue it (keeping only the latest write per key), will flush once back online
+    const queue = getQueue().filter(it=>it.key!==key);
+    queue.push({key, value});
+    setQueue(queue);
   }
+  return true;
 }
-// live subscription: fires immediately with current value, then again on every change from ANY device
+// "live" subscription: fires immediately with whatever's cached, then polls the server
+// every few seconds (and right away whenever the browser comes back online) for updates
+// made from the OTHER phone.
 function subscribeKey(key, callback){
-  if(!db){ callback(null); return ()=>{}; }
-  return docRef(key).onSnapshot(
-    snap => callback(snap.exists ? snap.data().value : null),
-    err => { console.error('subscribe failed', key, err); callback(null); }
-  );
+  let stopped = false;
+  let lastUpdatedAt = lsGetMeta(key).updatedAt || 0;
+
+  callback(lsGet(key));
+
+  async function tick(){
+    if(stopped) return;
+    await flushQueue();
+    try{
+      const {value, updatedAt} = await apiGet(key);
+      if(value!==null && updatedAt>=lastUpdatedAt){
+        lastUpdatedAt = updatedAt;
+        lsSet(key, value);
+        lsSetMeta(key, {updatedAt});
+        callback(value);
+      }
+    }catch(e){ /* offline — keep using cached value, will retry on next tick */ }
+  }
+  tick();
+  const interval = setInterval(tick, 4000);
+  window.addEventListener('online', tick);
+  return () => { stopped = true; clearInterval(interval); window.removeEventListener('online', tick); };
 }
 
 // invoice totals helper
@@ -638,8 +670,7 @@ function calcInvoiceTotals(invoice){
   const total = subtotal - discountAmount;
   return {subtotal, discountPercent, discountAmount, total};
 }
-
-function App(){
+  function App(){
   const [tab, setTab] = useState('sell');
   const [loading, setLoading] = useState(true);
   const [ingredients, setIngredients] = useState([]);
@@ -1011,12 +1042,12 @@ function SyncModal({onClose}){
   const fileInputRef = useRef(null);
 
   async function buildDump(){
-    const dump = {};
-    const snap = await db.collection('cafeData').get();
-    snap.forEach(doc=>{ dump[doc.id] = doc.data().value; });
-    return dump;
+    const res = await fetch(API_BASE+'list.php', {cache:'no-store'});
+    if(!res.ok) throw new Error('bad status');
+    return await res.json();
   }
   async function doExport(){
+    async function doExport(){
     setBusy(true);
     try{
       const dump = await buildDump();
@@ -1054,11 +1085,12 @@ function SyncModal({onClose}){
   async function applyDump(dump){
     setBusy(true);
     try{
-      const batch = db.batch();
-      Object.keys(dump).forEach(docId=>{
-        batch.set(db.collection('cafeData').doc(docId), {value: dump[docId], updatedAt: Date.now()});
+      const res = await fetch(API_BASE+'bulk_set.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(dump)
       });
-      await batch.commit();
+      if(!res.ok) throw new Error('bad status');
       alert('✅ بازیابی شد. صفحه الان رفرش میشه.');
       location.reload();
     }catch(e){
@@ -1151,7 +1183,8 @@ function BottomNav({tab, setTab}){
     </div>
   );
 }
-  // ---------------- SELL: list of open pre-invoices ----------------
+
+// ---------------- SELL: list of open pre-invoices ----------------
 function SellList({openInvoices, onOpenInvoice, onNewInvoice}){
   return (
     <div>
@@ -1415,6 +1448,7 @@ function ProductsTab({products, ingredients, onSave, showToast}){
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) closeForm();}}>
           <div className="modal">
             <div className="modal-title">{products.find(p=>p.id===editing.id)?'ویرایش محصول':'محصول جدید'}</div>
+            <div className="modal-title">{products.find(p=>p.id===editing.id)?'ویرایش محصول':'محصول جدید'}</div>
             <label>اسم محصول</label>
             <input type="text" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})} placeholder="مثلاً اسنک پنیری" />
 
@@ -1549,10 +1583,11 @@ function InventoryTab({ingredients, onSave, showToast}){
           </div>
         </div>
       ))}
+
       {showAddForm && (
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setShowAddForm(false);}}>
           <div className="modal">
-      <div className="modal-title">ماده اولیه جدید</div>
+            <div className="modal-title">ماده اولیه جدید</div>
             <label>اسم ماده</label>
             <input type="text" value={newIng.name} onChange={e=>setNewIng({...newIng,name:e.target.value})} placeholder="مثلاً پنیر پیتزا" />
             <label>واحد اندازه‌گیری</label>
@@ -1897,6 +1932,7 @@ function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales,
         <button className="btn btn-small btn-sage" onClick={()=>setFormType('development')}>+ توسعه کافه</button>
       </div>
       <div className="item-sub" style={{marginBottom:20}}>جمع هزینه‌های امروز: {fmt(todayTotal)} تومان</div>
+
       <div className="section-title">حسابداری — درآمد و هزینه</div>
       <div className="row" style={{marginBottom:12}}>
         <button className={"btn btn-small " + (!monthMode?"btn-sage":"btn-ghost")} onClick={()=>setMonthMode(false)}>دید روزانه</button>
