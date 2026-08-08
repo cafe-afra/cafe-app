@@ -1047,7 +1047,6 @@ function SyncModal({onClose}){
     return await res.json();
   }
   async function doExport(){
-    async function doExport(){
     setBusy(true);
     try{
       const dump = await buildDump();
@@ -1447,7 +1446,6 @@ function ProductsTab({products, ingredients, onSave, showToast}){
       {showForm && editing && (
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) closeForm();}}>
           <div className="modal">
-            <div className="modal-title">{products.find(p=>p.id===editing.id)?'ویرایش محصول':'محصول جدید'}</div>
             <div className="modal-title">{products.find(p=>p.id===editing.id)?'ویرایش محصول':'محصول جدید'}</div>
             <label>اسم محصول</label>
             <input type="text" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})} placeholder="مثلاً اسنک پنیری" />
