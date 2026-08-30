@@ -619,7 +619,33 @@ async function flushQueue(){
 }
 
 async function storageGet(key){
-  return lsGet(key);
+  // اول کش محلی را می‌خوانیم تا اپ سریع جواب بدهد
+  const cached = lsGet(key);
+
+  try{
+    // همیشه تلاش می‌کنیم نسخه جدیدتر را از سرور بگیریم
+    const remote = await apiGet(key);
+
+    if(remote && remote.value !== null && remote.value !== undefined){
+      const remoteUpdatedAt = Number(remote.updatedAt) || 0;
+      const localMeta = lsGetMeta(key);
+      const localUpdatedAt = Number(localMeta.updatedAt) || 0;
+
+      // اگر نسخه سرور جدیدتر یا هم‌زمان است، کش را به‌روزرسانی کن
+      if(remoteUpdatedAt >= localUpdatedAt){
+        lsSet(key, remote.value);
+        lsSetMeta(key, {updatedAt: remoteUpdatedAt});
+        return remote.value;
+      }
+
+      // اگر کش محلی جدیدتر است، فعلاً همان را نگه دار
+      return cached;
+    }
+  }catch(e){
+    // اینترنت قطع است؛ از کش استفاده کن
+  }
+
+  return cached;
 }
 async function storageSet(key, value){
   lsSet(key, value);
