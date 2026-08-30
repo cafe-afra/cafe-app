@@ -2113,38 +2113,169 @@ const monthCategories =
         </div>
       )}
 
-      {monthMode && (
-        <div>
-          <JalaliMonthPicker jy={monthJalali.jy} jm={monthJalali.jm}
-            onChange={(jy,jm)=>setMonthJalali({jy,jm})} />
-          <div style={{height:10}}></div>
-          <button className="btn btn-sage btn-block" onClick={openMonthReport} disabled={monthLoading}>{monthLoading?'در حال محاسبه...':'به‌روزرسانی گزارش ماهانه'}</button>
-          {monthData && !monthLoading && (
-            <div style={{marginTop:14}}>
-              <div className="row" style={{gap:8}}>
-                <div className="report-total" style={{flex:1, background:'var(--sage-light)', padding:12}}>
-                  <div className="amount" style={{fontSize:18, color:'var(--sage)'}}>{fmt(monthData.totalIncome)}</div>
-                  <div className="label">جمع درآمد ({monthData.countIncome} مورد)</div>
-                </div>
-                <div className="report-total" style={{flex:1, background:'#FBEAE6', padding:12}}>
-                  <div className="amount" style={{fontSize:18, color:'var(--warn)'}}>{fmt(monthData.totalExpense)}</div>
-                  <div className="label">جمع هزینه ({monthData.countExpense} مورد)</div>
-                </div>
-              </div>
-              <div className="section-title" style={{marginTop:12}}>هزینه به تفکیک دسته</div>
-              {Object.keys(monthData.byCategoryExpense).length===0 && <div className="item-sub">هزینه‌ای در این ماه نیست</div>}
-              {Object.keys(monthData.byCategoryExpense).map(cat=>(
-                <div key={cat} className="totals-row" style={{fontSize:14}}><span>{cat}</span><span>{fmt(monthData.byCategoryExpense[cat])} تومان</span></div>
-              ))}
-              <div className="section-title" style={{marginTop:12}}>درآمد به تفکیک دسته</div>
-              {Object.keys(monthData.byCategoryIncome).length===0 && <div className="item-sub">درآمدی در این ماه نیست</div>}
-              {Object.keys(monthData.byCategoryIncome).map(cat=>(
-                <div key={cat} className="totals-row" style={{fontSize:14}}><span>{cat}</span><span>{fmt(monthData.byCategoryIncome[cat])} تومان</span></div>
-              ))}
+{monthMode && (
+  <div>
+
+    <JalaliMonthPicker
+      jy={monthJalali.jy}
+      jm={monthJalali.jm}
+      onChange={(jy,jm)=>{
+        setMonthJalali({jy,jm});
+        setMonthData(null);
+      }}
+    />
+
+    <div style={{height:10}}></div>
+
+    <div className="row" style={{gap:8, marginBottom:12}}>
+
+      <select
+        value={filterType}
+        onChange={e=>{
+          setFilterType(e.target.value);
+          setCategoryFilter('');
+        }}
+      >
+        <option value="all">همه تراکنش‌ها</option>
+        <option value="income">فقط درآمد</option>
+        <option value="expense">فقط هزینه</option>
+      </select>
+
+      <select
+        value={categoryFilter}
+        onChange={e=>setCategoryFilter(e.target.value)}
+      >
+        <option value="">همه دسته‌ها</option>
+
+        {monthCategories.map(c=>(
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+
+      </select>
+
+    </div>
+
+    <button
+      className="btn btn-sage btn-block"
+      onClick={openMonthReport}
+      disabled={monthLoading}
+    >
+      {monthLoading
+        ? 'در حال محاسبه...'
+        : 'به‌روزرسانی گزارش ماهانه'}
+    </button>
+
+    {monthData && !monthLoading && (
+      <div style={{marginTop:14}}>
+
+        <div className="row" style={{gap:8}}>
+
+          <div
+            className="report-total"
+            style={{
+              flex:1,
+              background:'var(--sage-light)',
+              padding:12
+            }}
+          >
+            <div
+              className="amount"
+              style={{
+                fontSize:18,
+                color:'var(--sage)'
+              }}
+            >
+              {fmt(monthIncomeTotal)}
             </div>
-          )}
+
+            <div className="label">
+              درآمد ({monthIncomeCount} مورد)
+            </div>
+          </div>
+
+          <div
+            className="report-total"
+            style={{
+              flex:1,
+              background:'#FBEAE6',
+              padding:12
+            }}
+          >
+            <div
+              className="amount"
+              style={{
+                fontSize:18,
+                color:'var(--warn)'
+              }}
+            >
+              {fmt(monthExpenseTotal)}
+            </div>
+
+            <div className="label">
+              هزینه ({monthExpenseCount} مورد)
+            </div>
+          </div>
+
         </div>
-      )}
+
+        <div
+          className="section-title"
+          style={{marginTop:16}}
+        >
+          تراکنش‌های این ماه
+        </div>
+
+        {monthFilteredTransactions.length === 0 && (
+          <div className="empty-state">
+            تراکنشی با این فیلتر وجود ندارد
+          </div>
+        )}
+
+        {monthFilteredTransactions.map(t=>(
+          <div
+            key={t.kind + t.date + t.id}
+            className="card"
+          >
+
+            <div className="card-top">
+
+              <div>
+
+                <div className="item-name">
+                  {t.label}
+                </div>
+
+                <div className="item-sub">
+                  {t.category} · {t.date} · {t.time}
+                </div>
+
+              </div>
+
+              <span
+                className="oprice"
+                style={{
+                  color:
+                    t.kind === 'income'
+                      ? 'var(--sage)'
+                      : 'var(--warn)'
+                }}
+              >
+                {t.kind === 'income' ? '+' : '-'}
+                {fmt(t.amount)}
+              </span>
+
+            </div>
+
+          </div>
+        ))}
+
+      </div>
+    )}
+
+  </div>
+)}
 
       {formType==='ingredient' && (
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
