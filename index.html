@@ -1904,47 +1904,104 @@ function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales,
 
   const viewExpenseTotal = viewExpenses.reduce((s,e)=>s+e.amount,0);
   const viewIncomeTotal = viewSales.filter(o=>o.type==='settlement' || o.paid).reduce((s,o)=> s + (o.total!==undefined?o.total:o.price*o.qty), 0);
+async function openMonthReport(){
+  setMonthLoading(true);
 
-  async function openMonthReport(){
-    setMonthLoading(true);
-    const len = jalaliMonthLength(monthJalali.jy, monthJalali.jm);
-    const dayKeys = [];
-    for(let d=1; d<=len; d++){
-      const gk = jalaliToGregorianKey(monthJalali.jy, monthJalali.jm, d);
-      if(gk) dayKeys.push(gk);
-    }
-    try{
-      const results = await Promise.all(dayKeys.map(async gk=>{
-        const [expRaw, salesRaw] = await Promise.all([storageGet('expenses:'+gk), storageGet('sales:'+gk)]);
-        return {
-          expenses: expRaw ? JSON.parse(expRaw) : [],
-          sales: salesRaw ? JSON.parse(salesRaw) : [],
-        };
-      }));
-      const byCategoryExpense = {};
-      const byCategoryIncome = {};
-      let totalExpense = 0, totalIncome = 0, countExpense = 0, countIncome = 0;
-      results.forEach(({expenses, sales})=>{
-        expenses.forEach(e=>{
-          byCategoryExpense[e.category] = (byCategoryExpense[e.category]||0) + e.amount;
-          totalExpense += e.amount; countExpense++;
-        });
-        sales.forEach(o=>{
-          if(!(o.type==='settlement' || o.paid)) return;
-          const cat = saleCategory(o);
-          const amt = o.total!==undefined ? o.total : o.price*o.qty;
-          byCategoryIncome[cat] = (byCategoryIncome[cat]||0) + amt;
-          totalIncome += amt; countIncome++;
-        });
-      });
-      setMonthData({totalExpense, totalIncome, byCategoryExpense, byCategoryIncome, countExpense, countIncome});
-    }catch(e){
-      console.error('month report failed', e);
-      showToast('⚠️ خطا در خواندن گزارش ماهانه');
-    }
-    setMonthLoading(false);
+  const len = jalaliMonthLength(monthJalali.jy, monthJalali.jm);
+  const dayKeys = [];
+
+  for(let d=1; d<=len; d++){
+    const gk = jalaliToGregorianKey(
+      monthJalali.jy,
+      monthJalali.jm,
+      d
+    );
+
+    if(gk) dayKeys.push(gk);
   }
 
+  try{
+    const results = await Promise.all(
+      dayKeys.map(async gk => {
+        const [expRaw, salesRaw] = await Promise.all([
+          storageGet('expenses:'+gk),
+          storageGet('sales:'+gk)
+        ]);
+
+        return {
+          date:gk,
+          expenses:expRaw ? JSON.parse(expRaw) : [],
+          sales:salesRaw ? JSON.parse(salesRaw) : []
+        };
+      })
+    );
+
+    const transactions = [];
+
+    results.forEach(({date, expenses, sales}) => {
+
+      expenses.forEach(e => {
+        transactions.push({
+          kind:'expense',
+          id:e.id,
+          date,
+          time:e.time || '',
+          label:e.note,
+          category:e.category,
+          amount:Number(e.amount)||0,
+          raw:e
+        });
+      });
+
+      sales.forEach(o => {
+
+        // فقط درآمدهای واقعی
+        if(!(o.type==='settlement' || o.paid)) return;
+
+        const cat = saleCategory(o);
+        const amount =
+          o.total !== undefined
+            ? Number(o.total)||0
+            : (Number(o.price)||0) * (Number(o.qty)||0);
+
+        transactions.push({
+          kind:'income',
+          id:o.id,
+          date,
+          time:o.time || '',
+          label:saleLabel(o),
+          category:cat,
+          amount,
+          raw:o
+        });
+      });
+
+    });
+
+    transactions.sort((a,b)=>{
+      return (a.date+' '+a.time)
+        .localeCompare(b.date+' '+b.time);
+    });
+
+    setMonthData({
+      transactions
+    });
+
+  }catch(e){
+
+    console.error('month report failed', e);
+
+    showToast('⚠️ خطا در خواندن گزارش ماهانه');
+
+    setMonthData({
+      transactions:[]
+    });
+
+  }
+
+  setMonthLoading(false);
+}
+  
   const todayTotal = todayExpenses.reduce((s,e)=>s+e.amount,0);
 
   return (
