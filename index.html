@@ -2001,6 +2001,49 @@ async function openMonthReport(){
 
   setMonthLoading(false);
 }
+  const monthFilteredTransactions = monthData
+  ? monthData.transactions.filter(t => {
+
+      // فیلتر درآمد / هزینه
+      if(filterType === 'income' && t.kind !== 'income'){
+        return false;
+      }
+
+      if(filterType === 'expense' && t.kind !== 'expense'){
+        return false;
+      }
+
+      // فیلتر دسته
+      if(categoryFilter && t.category !== categoryFilter){
+        return false;
+      }
+
+      return true;
+    })
+  : [];
+
+const monthIncomeTotal = monthFilteredTransactions
+  .filter(t => t.kind === 'income')
+  .reduce((sum,t)=>sum+t.amount,0);
+
+const monthExpenseTotal = monthFilteredTransactions
+  .filter(t => t.kind === 'expense')
+  .reduce((sum,t)=>sum+t.amount,0);
+
+const monthIncomeCount = monthFilteredTransactions
+  .filter(t => t.kind === 'income')
+  .length;
+
+const monthExpenseCount = monthFilteredTransactions
+  .filter(t => t.kind === 'expense')
+  .length;
+
+const monthCategories =
+  filterType === 'expense'
+    ? expenseCategories
+    : filterType === 'income'
+      ? incomeCategories
+      : [...expenseCategories, ...incomeCategories];
   
   const todayTotal = todayExpenses.reduce((s,e)=>s+e.amount,0);
 
