@@ -1262,6 +1262,7 @@ function calcInvoiceTotals(invoice){
             onAddItem={addItemToInvoice}
             onChangeQty={changeItemQty}
             onDiscountChange={updateInvoiceDiscount}
+                        onQrStatusChange={updateQrOrderStatus}
             onBack={()=>setActiveInvoiceId(null)}
             onCancel={()=>cancelInvoice(activeInvoice)}
             onCash={()=>finalizeCash(activeInvoice)}
