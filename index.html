@@ -1027,6 +1027,33 @@ function calcInvoiceTotals(invoice){
     if(!ok) showToast('⚠️ ذخیره نشد، دوباره امتحان کن');
   }
 
+  async function updateQrOrderStatus(invoiceId, status){
+    const allowedStatuses = ['received', 'preparing', 'ready'];
+
+    if(!allowedStatuses.includes(status)){
+      showToast('وضعیت سفارش نامعتبر است');
+      return;
+    }
+
+    const current = openInvoicesRef.current.find(
+      invoice => invoice.id === invoiceId
+    );
+
+    if(!current || current.source !== 'qr'){
+      showToast('سفارش QR پیدا نشد');
+      return;
+    }
+
+    const nextInvoices = openInvoicesRef.current.map(invoice =>
+      invoice.id === invoiceId
+        ? {...invoice, status}
+        : invoice
+    );
+
+    await persistOpenInvoices(nextInvoices);
+    showToast('وضعیت سفارش تغییر کرد');
+  }
+
   const dayTotal = todaySales.filter(o=>o.paid).reduce((s,o)=> s + o.total, 0);
   // outstanding credit given TODAY = today's tab entries still unpaid, read straight from debtors (source of truth)
   const todayLabel = todayFaLabel();
