@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>منوی کافه افرا</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f3ef;
+      color: #222;
+      font-family: Tahoma, Arial, sans-serif;
+    }
+
+    header {
+      background: #222;
+      color: white;
+      padding: 22px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 25px;
+    }
+
+    #tableInfo {
+      font-size: 14px;
+      opacity: .8;
+    }
+
+    main {
+      max-width: 700px;
+      margin: auto;
+      padding: 15px 12px 120px;
+    }
+
+    .loading,
+    .error,
+    .empty {
+      text-align: center;
+      padding: 40px 15px;
+      color: #777;
+    }
+
+    .category {
+      margin-top: 25px;
+    }
+
+    .category-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0 0 12px;
+      padding-right: 8px;
+      border-right: 4px solid #222;
+    }
+
+    .product {
+      background: white;
+      border-radius: 14px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .product-info {
+      flex: 1;
+    }
+
+    .product-name {
+      font-size: 17px;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    .product-price {
+      color: #555;
+      font-size: 14px;
+    }
+
+    .add-btn {
+      border: none;
+      background: #222;
+      color: white;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 25px;
+      cursor: pointer;
+    }
+
+    .qty-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qty-btn {
+      width: 35px;
+      height: 35px;
+      border: none;
+      border-radius: 50%;
+      font-size: 20px;
+      background: #eee;
+      cursor: pointer;
+    }
+
+    .qty {
+      min-width: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .cart-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 12px;
+      box-shadow: 0 -3px 15px rgba(0,0,0,.12);
+      z-index: 20;
+    }
+
+    .cart-button {
+      width: 100%;
+      max-width: 700px;
+      display: block;
+      margin: auto;
+      border: none;
+      background: #222;
+      color: white;
+      padding: 15px;
+      border-radius: 12px;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    .cart-button:disabled {
+      background: #aaa;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-box {
+      background: white;
+      max-width: 600px;
+      margin: 30px auto;
+      border-radius: 18px;
+      padding: 20px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 21px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+      gap: 10px;
+    }
+
+    .cart-item-name {
+      flex: 1;
+    }
+
+    .total {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .submit-btn,
+    .close-btn {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .submit-btn {
+      background: #222;
+      color: white;
+    }
+
+    .close-btn {
+      background: #eee;
+      color: #222;
+    }
+
+    .success {
+      text-align: center;
+      padding: 30px 10px;
+    }
+
+    .success-icon {
+      font-size: 55px;
+      margin-bottom: 15px;
+    }
+
+    .success h2 {
+      margin-bottom: 10px;
+    }
+
+    .table-input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>☕ کافه افرا</h1>
+  <div id="tableInfo">در حال دریافت اطلاعات...</div>
+</header>
+
+<main id="menu">
+  <div class="loading">در حال بارگذاری منو...</div>
+</main>
+
+<div class="cart-bar">
+  <button id="cartButton" class="cart-button" disabled>
+    سبد سفارش خالی است
+  </button>
+</div>
+
+<!-- Cart Modal -->
+<div id="cartModal" class="modal">
+  <div class="modal-box">
+
+    <div class="modal-title">
+      🛒 سفارش شما
+    </div>
+
+    <div id="cartItems"></div>
+
+    <div id="cartTotal" class="total"></div>
+
+    <button id="submitOrderBtn" class="submit-btn">
+      ثبت سفارش
+    </button>
+
+    <button onclick="closeCart()" class="close-btn">
+      بستن
+    </button>
+
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal">
+  <div class="modal-box">
+
+    <div class="success">
+      <div class="success-icon">✅</div>
+
+      <h2>سفارش ثبت شد</h2>
+
+      <p>
+        سفارش شما با موفقیت برای کافه ارسال شد.
+      </p>
+
+      <button onclick="location.reload()" class="submit-btn">
+        بازگشت به منو
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+  /*
+    آدرس API کافه
+  */
+  const API_BASE = 'https://skateapp.ir/cafe-api/';
+
+  /*
+    شماره میز از آدرس خوانده می‌شود.
+
+    مثال:
+    menu.html?table=5
+  */
+  const urlParams = new URLSearchParams(window.location.search);
+
+  const tableNumber =
+    urlParams.get('table') ||
+    urlParams.get('t') ||
+    '';
+
+  let products = [];
+  let cart = {};
+
+  /*
+    نمایش شماره میز
+  */
+  if (tableNumber) {
+
+    document.getElementById('tableInfo').textContent =
+      'میز شماره ' + tableNumber;
+
+  } else {
+
+    document.getElementById('tableInfo').textContent =
+      'سفارش از منوی کافه';
+
+  }
+
+
+  /*
+    دریافت منوی عمومی
+
+    این فایل PHP را در مرحله بعد می‌سازیم.
+  */
+  async function loadMenu() {
+
+    try {
+
+      const response =
+        await fetch(API_BASE + 'public_menu.php');
+
+      if (!response.ok) {
+        throw new Error('خطا در دریافت منو');
+      }
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.error || 'خطا');
+      }
+
+      products = Array.isArray(data.products)
+        ? data.products
+        : [];
+
+      renderMenu();
+
+    } catch (error) {
+
+      console.error(error);
+
+      document.getElementById('menu').innerHTML = `
+        <div class="error">
+          ❌ دریافت منو با مشکل مواجه شد.<br><br>
+          لطفاً اینترنت را بررسی کنید و دوباره تلاش کنید.
+        </div>
+      `;
+
+    }
+
+  }
+
+
+  /*
+    نمایش محصولات
+  */
+  function renderMenu() {
+
+    const menu = document.getElementById('menu');
+
+    if (!products.length) {
+
+      menu.innerHTML = `
+        <div class="empty">
+          فعلاً محصولی برای نمایش وجود ندارد.
+        </div>
+      `;
+
+      return;
+    }
+
+    const categories = {};
+
+    products.forEach(product => {
+
+      const category =
+        product.category || 'سایر';
+
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+
+      categories[category].push(product);
+
+    });
+
+
+    menu.innerHTML = '';
+
+
+    Object.keys(categories).forEach(category => {
+
+      const section = document.createElement('section');
+
+      section.className = 'category';
+
+      section.innerHTML = `
+        <div class="category-title">
+          ${escapeHtml(category)}
+        </div>
+      `;
+
+
+      categories[category].forEach(product => {
+
+        const quantity = cart[product.id] || 0;
+
+        const div = document.createElement('div');
+
+        div.className = 'product';
+
+        div.innerHTML = `
+
+          <div class="product-info">
+
+            <div class="product-name">
+              ${escapeHtml(product.name)}
+            </div>
+
+            <div class="product-price">
+              ${formatPrice(product.price)} تومان
+            </div>
+
+          </div>
+
+          <div class="product-action">
+
+            ${
+              quantity > 0
+
+              ?
+
+              `
+              <div class="qty-box">
+
+                <button
+                  class="qty-btn"
+                  onclick="changeQty('${product.id}', -1)">
+                  −
+                </button>
+
+                <div class="qty">
+                  ${quantity}
+                </div>
+
+                <button
+                  class="qty-btn"
+                  onclick="changeQty('${product.id}', 1)">
+                  +
+                </button>
+
+              </div>
+              `
+
+              :
+
+              `
+              <button
+                class="add-btn"
+                onclick="changeQty('${product.id}', 1)">
+                +
+              </button>
+              `
+
+            }
+
+          </div>
+
+        `;
+
+        section.appendChild(div);
+
+      });
+
+
+      menu.appendChild(section);
+
+    });
+
+    updateCartButton();
+
+  }
+
+
+  /*
+    تغییر تعداد محصول
+  */
+  function changeQty(productId, amount) {
+
+    const product =
+      products.find(p => String(p.id) === String(productId));
+
+    if (!product) return;
+
+
+    const oldQty =
+      cart[productId] || 0;
+
+    const newQty =
+      oldQty + amount;
+
+
+    if (newQty <= 0) {
+
+      delete cart[productId];
+
+    } else {
+
+      cart[productId] = newQty;
+
+    }
+
+
+    renderMenu();
+
+  }
+
+
+  /*
+    اطلاعات سبد
+  */
+  function getCartItems() {
+
+    return Object.keys(cart)
+      .map(id => {
+
+        const product =
+          products.find(p => String(p.id) === String(id));
+
+        if (!product) return null;
+
+        return {
+          productId: product.id,
+          name: product.name,
+          price: Number(product.price) || 0,
+          qty: cart[id]
+        };
+
+      })
+      .filter(Boolean);
+
+  }
+
+
+  /*
+    نمایش دکمه سبد
+  */
+  function updateCartButton() {
+
+    const button =
+      document.getElementById('cartButton');
+
+    const items =
+      getCartItems();
+
+    const count =
+      items.reduce((sum, item) => sum + item.qty, 0);
+
+    const total =
+      items.reduce(
+        (sum, item) =>
+          sum + item.price * item.qty,
+        0
+      );
+
+
+    if (count === 0) {
+
+      button.disabled = true;
+
+      button.textContent =
+        'سبد سفارش خالی است';
+
+    } else {
+
+      button.disabled = false;
+
+      button.textContent =
+        `🛒 مشاهده سفارش | ${count} قلم | ${formatPrice(total)} تومان`;
+
+    }
+
+  }
+
+
+  /*
+    باز کردن سبد
+  */
+  document.getElementById('cartButton')
+    .addEventListener('click', openCart);
+
+
+  function openCart() {
+
+    renderCart();
+
+    document.getElementById('cartModal').style.display =
+      'block';
+
+  }
+
+
+  function closeCart() {
+
+    document.getElementById('cartModal').style.display =
+      'none';
+
+  }
+
+
+  /*
+    نمایش سبد
+  */
+  function renderCart() {
+
+    const container =
+      document.getElementById('cartItems');
+
+    const items =
+      getCartItems();
+
+
+    if (!items.length) {
+
+      container.innerHTML =
+        '<div class="empty">سبد سفارش خالی است.</div>';
+
+      document.getElementById('cartTotal').textContent =
+        '';
+
+      return;
+
+    }
+
+
+    let total = 0;
+
+
+    container.innerHTML =
+      items.map(item => {
+
+        const itemTotal =
+          item.price * item.qty;
+
+        total += itemTotal;
+
+
+        return `
+
+          <div class="cart-item">
+
+            <div class="cart-item-name">
+
+              <strong>
+                ${escapeHtml(item.name)}
+              </strong>
+
+              <br>
+
+              <small>
+                ${formatPrice(item.price)} تومان
+              </small>
+
+            </div>
+
+            <div class="qty-box">
+
+              <button
+                class="qty-btn"
+                onclick="changeQty('${item.productId}', -1); renderCart();">
+                −
+              </button>
+
+              <span class="qty">
+                ${item.qty}
+              </span>
+
+              <button
+                class="qty-btn"
+                onclick="changeQty('${item.productId}', 1); renderCart();">
+                +
+              </button>
+
+            </div>
+
+          </div>
+
+        `;
+
+      }).join('');
+
+
+    document.getElementById('cartTotal').textContent =
+      'مجموع: ' + formatPrice(total) + ' تومان';
+
+  }
+
+
+  /*
+    ثبت سفارش
+  */
+  document.getElementById('submitOrderBtn')
+    .addEventListener('click', submitOrder);
+
+
+  async function submitOrder() {
+
+    const items =
+      getCartItems();
+
+
+    if (!items.length) {
+
+      alert('سبد سفارش خالی است.');
+
+      return;
+
+    }
+
+
+    const button =
+      document.getElementById('submitOrderBtn');
+
+    button.disabled = true;
+
+    button.textContent =
+      'در حال ارسال سفارش...';
+
+
+    try {
+
+      /*
+        قیمت را عمداً به عنوان اطلاعات
+        قابل اعتماد به سرور نمی‌فرستیم.
+
+        سرور خودش قیمت واقعی محصول را
+        از دیتابیس بررسی می‌کند.
+      */
+
+      const response =
+        await fetch(API_BASE + 'submit_order.php', {
+
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json'
+          },
+
+          body: JSON.stringify({
+
+            table:
+              tableNumber,
+
+            items:
+              items.map(item => ({
+                productId: item.productId,
+                qty: item.qty
+              })),
+
+            clientOrderId:
+              generateOrderId()
+
+          })
+
+        });
+
+
+      const data =
+        await response.json();
+
+
+      if (!data.ok) {
+
+        throw new Error(
+          data.error || 'ثبت سفارش ناموفق بود'
+        );
+
+      }
+
+
+      document.getElementById('cartModal').style.display =
+        'none';
+
+      document.getElementById('successModal').style.display =
+        'block';
+
+
+      cart = {};
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        'ثبت سفارش انجام نشد.\n\n' +
+        (error.message || 'خطای نامشخص')
+      );
+
+      button.disabled = false;
+
+      button.textContent =
+        'ثبت سفارش';
+
+    }
+
+  }
+
+
+  /*
+    شناسه یکتا برای جلوگیری از ثبت دوباره
+    یک سفارش در صورت دوبار ارسال شدن
+  */
+  function generateOrderId() {
+
+    return 'qr-' +
+      Date.now() +
+      '-' +
+      Math.random()
+        .toString(36)
+        .substring(2, 10);
+
+  }
+
+
+  /*
+    فرمت قیمت
+  */
+  function formatPrice(number) {
+
+    return Number(number || 0)
+      .toLocaleString('fa-IR');
+
+  }
+
+
+  /*
+    جلوگیری از تزریق HTML
+  */
+  function escapeHtml(value) {
+
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+
+  }
+
+
+  /*
+    شروع
+  */
+  loadMenu();
+
+</script>
+
+</body>
+</html>
