@@ -579,115 +579,354 @@ function JalaliMonthPicker({jy, jm, onChange}){
     </div>
   );
 }
-
-// ---- Storage: own PHP+MySQL API on skateapp.ir (no VPN needed — this host isn't filtered),
-// with localStorage caching so the app works fully offline, a queue for writes made while
-// offline (flushed automatically once the connection returns), and polling instead of a
-// live push feed (plain PHP has no realtime channel like Firestore did). ----
+  // ---- Storage: PHP+MySQL API + local cache + safe offline queue ----
 const API_BASE = 'https://skateapp.ir/cafe-api/';
 
-function lsGet(key){ try{ return localStorage.getItem('cafeCache:'+key); }catch(e){ return null; } }
-function lsSet(key, value){ try{ localStorage.setItem('cafeCache:'+key, value); }catch(e){} }
-function lsGetMeta(key){ try{ return JSON.parse(localStorage.getItem('cafeMeta:'+key)||'{}'); }catch(e){ return {}; } }
-function lsSetMeta(key, meta){ try{ localStorage.setItem('cafeMeta:'+key, JSON.stringify(meta)); }catch(e){} }
-function getQueue(){ try{ return JSON.parse(localStorage.getItem('cafeQueue')||'[]'); }catch(e){ return []; } }
-function setQueue(q){ try{ localStorage.setItem('cafeQueue', JSON.stringify(q)); }catch(e){} }
+function lsGet(key){
+  try{
+    return localStorage.getItem('cafeCache:'+key);
+  }catch(e){
+    return null;
+  }
+}
+
+function lsSet(key, value){
+  try{
+    localStorage.setItem('cafeCache:'+key, value);
+  }catch(e){}
+}
+
+function lsGetMeta(key){
+  try{
+    return JSON.parse(localStorage.getItem('cafeMeta:'+key)||'{}');
+  }catch(e){
+    return {};
+  }
+}
+
+function lsSetMeta(key, meta){
+  try{
+    localStorage.setItem('cafeMeta:'+key, JSON.stringify(meta));
+  }catch(e){}
+}
+
+function getQueue(){
+  try{
+    return JSON.parse(localStorage.getItem('cafeQueue')||'[]');
+  }catch(e){
+    return [];
+  }
+}
+
+function setQueue(q){
+  try{
+    localStorage.setItem('cafeQueue', JSON.stringify(q));
+  }catch(e){}
+}
+
+// جلوگیری از تداخل چند ذخیره هم‌زمان برای یک کلید
+const storageWriteChains = {};
+const pendingStorageWrites = new Set();
 
 async function apiGet(key){
-  const res = await fetch(API_BASE+'get.php?key='+encodeURIComponent(key), {cache:'no-store'});
+  const res = await fetch(
+    API_BASE+'get.php?key='+encodeURIComponent(key),
+    {cache:'no-store'}
+  );
+
   if(!res.ok) throw new Error('bad status');
-  return await res.json(); // {value, updatedAt}
-}
-async function apiSet(key, value){
-  const res = await fetch(API_BASE+'set.php', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({key, value})
-  });
-  if(!res.ok) throw new Error('bad status');
+
   return await res.json();
 }
+
+async function apiSet(key, value){
+  const res = await fetch(API_BASE+'set.php',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key, value})
+  });
+
+  if(!res.ok) throw new Error('bad status');
+
+  return await res.json();
+}
+
+// ارسال نوشته‌های ذخیره‌نشده
 async function flushQueue(){
+
   let queue = getQueue();
+
   if(queue.length===0) return;
+
   const remaining = [];
+
   for(const item of queue){
-    try{ await apiSet(item.key, item.value); }
-    catch(e){ remaining.push(item); }
+
+    // این کلید در حال ذخیره‌ی مستقیم است؛
+    // فعلاً دست نمی‌زنیم تا دو write با هم تداخل نکنند.
+    if(pendingStorageWrites.has(item.key)){
+      remaining.push(item);
+      continue;
+    }
+
+    try{
+
+      pendingStorageWrites.add(item.key);
+
+      const result = await apiSet(item.key,item.value);
+
+      // مقدار محلی همان چیزی است که واقعاً ارسال کردیم
+      lsSet(item.key,item.value);
+
+      // اگر API زمان سرور را برگرداند، همان را نگه می‌داریم
+      const serverUpdatedAt =
+        result && Number(result.updatedAt)
+          ? Number(result.updatedAt)
+          : Date.now();
+
+      lsSetMeta(item.key,{
+        updatedAt:serverUpdatedAt
+      });
+
+    }catch(e){
+
+      remaining.push(item);
+
+    }finally{
+
+      pendingStorageWrites.delete(item.key);
+
+    }
   }
+
   setQueue(remaining);
 }
 
+
+// گرفتن اطلاعات
 async function storageGet(key){
-  // اول کش محلی را می‌خوانیم تا اپ سریع جواب بدهد
+
   const cached = lsGet(key);
 
   try{
-    // همیشه تلاش می‌کنیم نسخه جدیدتر را از سرور بگیریم
+
     const remote = await apiGet(key);
 
-    if(remote && remote.value !== null && remote.value !== undefined){
-      const remoteUpdatedAt = Number(remote.updatedAt) || 0;
-      const localMeta = lsGetMeta(key);
-      const localUpdatedAt = Number(localMeta.updatedAt) || 0;
+    if(remote &&
+       remote.value !== null &&
+       remote.value !== undefined){
 
-      // اگر نسخه سرور جدیدتر یا هم‌زمان است، کش را به‌روزرسانی کن
-      if(remoteUpdatedAt >= localUpdatedAt){
-        lsSet(key, remote.value);
-        lsSetMeta(key, {updatedAt: remoteUpdatedAt});
+      const remoteUpdatedAt =
+        Number(remote.updatedAt)||0;
+
+      const localMeta = lsGetMeta(key);
+
+      const localUpdatedAt =
+        Number(localMeta.updatedAt)||0;
+
+      // فقط وقتی نسخه‌ی سرور واقعاً جدیدتر است
+      // آن را روی کش محلی بنویس
+      if(remoteUpdatedAt > localUpdatedAt){
+
+        lsSet(key,remote.value);
+
+        lsSetMeta(key,{
+          updatedAt:remoteUpdatedAt
+        });
+
         return remote.value;
       }
 
-      // اگر کش محلی جدیدتر است، فعلاً همان را نگه دار
+      // اگر نسخه محلی جدیدتر یا مساوی است
+      // نسخه محلی را نگه دار
       return cached;
     }
+
   }catch(e){
-    // اینترنت قطع است؛ از کش استفاده کن
+    // آفلاین → استفاده از کش محلی
   }
 
   return cached;
 }
-async function storageSet(key, value){
-  lsSet(key, value);
-  lsSetMeta(key, {updatedAt: Date.now()});
-  try{
-    await apiSet(key, value);
-  }catch(e){
-    // offline: queue it (keeping only the latest write per key), will flush once back online
-    const queue = getQueue().filter(it=>it.key!==key);
-    queue.push({key, value});
-    setQueue(queue);
-  }
-  return true;
-}
-// "live" subscription: fires immediately with whatever's cached, then polls the server
-// every few seconds (and right away whenever the browser comes back online) for updates
-// made from the OTHER phone.
-function subscribeKey(key, callback){
-  let stopped = false;
-  let lastUpdatedAt = lsGetMeta(key).updatedAt || 0;
 
+
+// ذخیره‌ی امن
+async function storageSet(key,value){
+
+  // زنجیره‌ی ذخیره برای هر key
+  const previous =
+    storageWriteChains[key] || Promise.resolve();
+
+  const current = previous.then(async()=>{
+
+    // از همین لحظه اجازه نمی‌دهیم polling
+    // نسخه قدیمی سرور را روی این key بنویسد
+    pendingStorageWrites.add(key);
+
+    // اول همیشه محلی ذخیره کن
+    lsSet(key,value);
+
+    // timestamp محلی
+    const localWriteTime = Date.now();
+
+    lsSetMeta(key,{
+      updatedAt:localWriteTime
+    });
+
+    try{
+
+      // ارسال به سرور
+      const result = await apiSet(key,value);
+
+      // اگر سرور timestamp خودش را دارد،
+      // همان timestamp مرجع اصلی باشد
+      const serverUpdatedAt =
+        result && Number(result.updatedAt)
+          ? Number(result.updatedAt)
+          : localWriteTime;
+
+      lsSetMeta(key,{
+        updatedAt:serverUpdatedAt
+      });
+
+      return true;
+
+    }catch(e){
+
+      // اینترنت قطع بود:
+      // آخرین مقدار را در صف نگه دار
+      const queue =
+        getQueue().filter(item=>item.key!==key);
+
+      queue.push({
+        key,
+        value
+      });
+
+      setQueue(queue);
+
+      // چون localStorage مقدار را دارد،
+      // فعلاً اطلاعات از بین نمی‌رود
+      return true;
+
+    }finally{
+
+      pendingStorageWrites.delete(key);
+
+    }
+
+  });
+
+  storageWriteChains[key] = current.catch(()=>{});
+
+  return current;
+}
+
+
+// همگام‌سازی زنده با سرور
+function subscribeKey(key,callback){
+
+  let stopped = false;
+
+  // آخرین نسخه‌ای که این subscription دیده
+  let lastUpdatedAt =
+    Number(lsGetMeta(key).updatedAt)||0;
+
+  // اول کش محلی را نمایش بده
   callback(lsGet(key));
 
+
   async function tick(){
+
     if(stopped) return;
+
+    // اگر برای این key ذخیره‌ی در حال انجام داریم،
+    // اصلاً نسخه‌ی سرور را نخوان
+    if(pendingStorageWrites.has(key)){
+      return;
+    }
+
+    // اول queue را ارسال کن
     await flushQueue();
+
+    // اگر در flush چیزی برای همین key ارسال شد،
+    // دوباره نسخه‌ی سرور را همین لحظه روی UI نریز
+    if(pendingStorageWrites.has(key)){
+      return;
+    }
+
     try{
-      const {value, updatedAt} = await apiGet(key);
-      if(value!==null && updatedAt>=lastUpdatedAt){
+
+      const remote = await apiGet(key);
+
+      if(!remote) return;
+
+      const value = remote.value;
+      const updatedAt =
+        Number(remote.updatedAt)||0;
+
+      if(value === null || value === undefined){
+        return;
+      }
+
+      // خیلی مهم:
+      // فقط نسخه‌ای که واقعاً جدیدتر است پذیرفته شود.
+      //
+      // قبلاً >= بود که باعث می‌شد نسخه قدیمی
+      // سرور بتواند نسخه جدید محلی را overwrite کند.
+      if(updatedAt > lastUpdatedAt){
+
         lastUpdatedAt = updatedAt;
-        lsSet(key, value);
-        lsSetMeta(key, {updatedAt});
+
+        lsSet(key,value);
+
+        lsSetMeta(key,{
+          updatedAt
+        });
+
         callback(value);
       }
-    }catch(e){ /* offline — keep using cached value, will retry on next tick */ }
-  }
-  tick();
-  const interval = setInterval(tick, 4000);
-  window.addEventListener('online', tick);
-  return () => { stopped = true; clearInterval(interval); window.removeEventListener('online', tick); };
-}
 
+    }catch(e){
+
+      // آفلاین → هیچ کاری نکن
+      // کش محلی همچنان معتبر است
+
+    }
+  }
+
+
+  // یک بار فوراً بررسی کن
+  tick();
+
+  // سپس هر 4 ثانیه
+  const interval =
+    setInterval(tick,4000);
+
+  // وقتی اینترنت برگشت
+  const onlineHandler = ()=>{
+    tick();
+  };
+
+  window.addEventListener(
+    'online',
+    onlineHandler
+  );
+
+
+  return ()=>{
+
+    stopped = true;
+
+    clearInterval(interval);
+
+    window.removeEventListener(
+      'online',
+      onlineHandler
+    );
+
+  };
+}
 // invoice totals helper
 function calcInvoiceTotals(invoice){
   const subtotal = (invoice.items||[]).reduce((s,it)=> s + it.price*it.qty, 0);
