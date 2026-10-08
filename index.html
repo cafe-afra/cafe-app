@@ -1542,8 +1542,7 @@ function NewInvoiceModal({debtors, onPickDebtor, onWalkin, onClose}){
 }
 
 // ---------------- SELL: invoice workspace ----------------
-function InvoiceWorkspace({invoice, products, ingredients, onAddItem, onChangeQty, onDiscountChange, onBack, onCancel, onCash, onCredit}){
-  const totals = calcInvoiceTotals(invoice);
+function InvoiceWorkspace({invoice, products, ingredients, onAddItem, onChangeQty, onDiscountChange, onBack, onCancel, onCash, onCredit, onQrStatusChange}){
   function isLow(product){
     return (product.recipe||[]).some(r=>{
       const ing = ingredients.find(i=>i.id===r.ingredientId);
