@@ -1558,6 +1558,46 @@ function InvoiceWorkspace({invoice, products, ingredients, onAddItem, onChangeQt
         </span>
       </div>
 
+      {invoice.source === 'qr' && (
+        <div className="card">
+          <div className="section-title">وضعیت سفارش QR</div>
+
+          <div className="item-sub" style={{marginBottom:10}}>
+            میز {invoice.tableNumber || invoice.table || '?'}
+            {' — '}
+            {{
+              received: 'ثبت شد',
+              preparing: 'در حال آماده‌سازی',
+              ready: 'آماده تحویل'
+            }[invoice.status || 'received']}
+          </div>
+
+          <div style={{display:'grid', gap:8}}>
+            <button
+              className="btn btn-ghost"
+              onClick={() => onQrStatusChange(invoice.id, 'received')}
+            >
+              ثبت شد
+            </button>
+
+            <button
+              className="btn btn-ghost"
+              onClick={() => onQrStatusChange(invoice.id, 'preparing')}
+            >
+              در حال آماده‌سازی
+            </button>
+
+            <button
+              className="btn btn-sage"
+              onClick={() => onQrStatusChange(invoice.id, 'ready')}
+            >
+              آماده تحویل
+            </button>
+          </div>
+        </div>
+      )}
+
+      
       {invoice.items.length>0 && (
         <div style={{marginBottom:16}}>
           <div className="section-title">سفارش این فاکتور</div>
