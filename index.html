@@ -874,18 +874,23 @@ function subscribeKey(key,callback){
       //
       // قبلاً >= بود که باعث می‌شد نسخه قدیمی
       // سرور بتواند نسخه جدید محلی را overwrite کند.
-      if(updatedAt > lastUpdatedAt){
+      const localValue = lsGet(key);
 
-        lastUpdatedAt = updatedAt;
+if(
+  updatedAt > lastUpdatedAt ||
+  (key === 'openInvoices' && value !== localValue)
+){
 
-        lsSet(key,value);
+  lastUpdatedAt = Math.max(lastUpdatedAt, updatedAt);
 
-        lsSetMeta(key,{
-          updatedAt
-        });
+  lsSet(key, value);
 
-        callback(value);
-      }
+  lsSetMeta(key, {
+    updatedAt
+  });
+
+  callback(value);
+}
 
     }catch(e){
 
