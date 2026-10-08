@@ -1624,13 +1624,14 @@ function ProductsTab({products, ingredients, onSave, showToast}){
   const grouped = categories.map(cat => ({cat, items: products.filter(p=>(p.category||'سایر')===cat)}));
 
   function openNew(){
-    setEditing({id:uid(), name:'', price:'', category:'', recipe:[], autoPrice:false, profitPercent:220});
+    setEditing({id:uid(), name:'', price:'', category:'', recipe:[], autoPrice:false, profitPercent:220, qrEnabled:false});
     setShowForm(true);
   }
   function openEdit(p){
     const clone = JSON.parse(JSON.stringify(p));
     if(clone.autoPrice===undefined) clone.autoPrice = false;
     if(clone.profitPercent===undefined) clone.profitPercent = 220;
+    if(clone.qrEnabled===undefined) clone.qrEnabled = false;
     setEditing(clone);
     setShowForm(true);
   }
