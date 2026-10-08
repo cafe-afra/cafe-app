@@ -1460,7 +1460,14 @@ function SellList({openInvoices, onOpenInvoice, onNewInvoice}){
         const totals = calcInvoiceTotals(inv);
         return (
           <div key={inv.id} className={"invoice-card" + (inv.customerType==='debtor'?' debtor-linked':'')} onClick={()=>onOpenInvoice(inv.id)}>
-            <div className="icname">{inv.customerType==='debtor' ? '👤 ' + inv.debtorName : '🧍 مشتری غیرخودی'}</div>
+            <div className="icname">
+  {inv.source === 'qr'
+    ? '📱 QR — میز ' + (inv.tableNumber || inv.table || '?')
+    : inv.customerType === 'debtor'
+      ? '👤 ' + inv.debtorName
+      : '🧍 مشتری غیرخودی'
+  }
+</div>
             <div className="icmeta">{inv.items.length} قلم {inv.discountPercent>0 ? `· ${inv.discountPercent}% تخفیف` : ''}</div>
             <div className="ictotal">{fmt(totals.total)} تومان</div>
           </div>
