@@ -155,9 +155,10 @@ const API_BASE = 'https://skateapp.ir/cafe-api/';
         }
 
         const order = data.order;
-        const status = statusOrder.includes(order.status)
-          ? order.status
-          : 'received';
+        const isClosed = order.status === 'closed';
+        const status = isClosed
+          ? 'ready'
+          : (statusOrder.includes(order.status) ? order.status : 'received');
 
         showMessage('');
         document.getElementById('orderArea').hidden = false;
