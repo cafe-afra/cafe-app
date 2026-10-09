@@ -2401,7 +2401,7 @@ const monthExpenseTotal = monthFilteredTransactions
   .filter(t => t.kind === 'expense')
   .reduce((sum,t)=>sum+t.amount,0);
 
-const monthIncomeCount = monthFilteredTransactions
+const monthIncomeCount = _countedIncome
   .filter(t => t.kind === 'income')
   .length;
 
