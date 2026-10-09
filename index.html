@@ -881,6 +881,7 @@ function subscribeKey(key,callback){
     }
 
     // اول queue را ارسال کن
+    const seqAtStart = storageWriteSeq[key] || 0;
     await flushQueue();
 
     // اگر در flush چیزی برای همین key ارسال شد،
