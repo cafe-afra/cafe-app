@@ -820,7 +820,7 @@
               })),
 
             clientOrderId:
-              generateOrderId()
+              (currentOrderId = currentOrderId || generateOrderId())
 
           })
 
