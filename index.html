@@ -895,6 +895,9 @@ function subscribeKey(key,callback){
       const remote = await apiGet(key);
 
       if(!remote) return;
+      if(pendingStorageWrites.has(key) || (storageWriteSeq[key]||0) !== seqAtStart){
+        return;
+      }
 
       const value = remote.value;
       const updatedAt =
