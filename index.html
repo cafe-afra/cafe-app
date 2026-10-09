@@ -1778,7 +1778,7 @@ function ProductsTab({products, ingredients, onSave, showToast}){
   }
   function recalcOne(p){
     const cost = recipeCost(p.recipe, ingredients);
-    const newPrice = roundToNearest(cost * (1 + (Number(p.profitPercent)||220)/100), 500);
+    const newPrice = roundToNearest(cost * (1 + (p.profitPercent===undefined||p.profitPercent===''?220:Number(p.profitPercent))/100), 500);
     onSave(products.map(x=> x.id===p.id ? {...x, price:newPrice} : x));
     showToast('✅ قیمت به‌روز شد: ' + fmt(newPrice) + ' تومان');
   }
