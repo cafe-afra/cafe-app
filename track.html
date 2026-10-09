@@ -407,7 +407,16 @@
           itemsEl.appendChild(row);
         });
 
-        document.getElementById('total').textContent = money(total);
+        const pct = Math.min(100, Math.max(0, Number(order.discountPercent) || 0));
+        const discount = Math.round(total * pct / 100);
+        const hasDiscount = pct > 0 && discount > 0;
+        document.getElementById('subtotalRow').hidden = !hasDiscount;
+        document.getElementById('discountRow').hidden = !hasDiscount;
+        document.getElementById('subtotal').textContent = money(total);
+        document.getElementById('discountLabel').textContent = 'تخفیف (' + pct.toLocaleString('fa-IR') + '٪)';
+        document.getElementById('discountAmount').textContent = '− ' + money(discount);
+        document.getElementById('totalLabel').textContent = hasDiscount ? 'مبلغ نهایی' : 'مبلغ کل';
+        document.getElementById('total').textContent = money(total - discount);
         document.getElementById('lastUpdated').textContent =
           'آخرین بررسی: ' +
           new Date().toLocaleTimeString('fa-IR');
