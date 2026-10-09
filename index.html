@@ -784,6 +784,7 @@ async function storageGet(key){
 
 // ذخیره‌ی امن
 async function storageSet(key,value){
+  storageWriteSeq[key] = (storageWriteSeq[key]||0) + 1;
 
   // زنجیره‌ی ذخیره برای هر key
   const previous =
