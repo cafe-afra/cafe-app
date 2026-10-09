@@ -763,6 +763,7 @@ async function storageSet(key,value){
     // نسخه قدیمی سرور را روی این key بنویسد
     pendingStorageWrites.add(key);
 
+    const baseUpdatedAt = Number(lsGetMeta(key).updatedAt)||0;
     // اول همیشه محلی ذخیره کن
     lsSet(key,value);
 
