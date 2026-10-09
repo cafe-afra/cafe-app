@@ -2326,7 +2326,7 @@ async function openMonthReport(){
       sales.forEach(o => {
 
         // فقط درآمدهای واقعی
-        if(!(o.type==='settlement' || o.paid)) return;
+        // نسیه‌ها در لیست نشان داده می‌شوند ولی در جمع درآمد حساب نمی‌شوند
 
         const cat = saleCategory(o);
         const amount =
