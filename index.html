@@ -2392,7 +2392,8 @@ async function openMonthReport(){
     })
   : [];
 
-const monthIncomeTotal = monthFilteredTransactions
+const _countedIncome = monthFilteredTransactions.filter(t => t.kind === 'income' && (t.raw.type === 'settlement' || t.raw.paid));
+const monthIncomeTotal = _countedIncome
   .filter(t => t.kind === 'income')
   .reduce((sum,t)=>sum+t.amount,0);
 
