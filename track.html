@@ -165,7 +165,9 @@ const API_BASE = 'https://skateapp.ir/cafe-api/';
         document.getElementById('itemsCard').hidden = false;
 
         document.getElementById('statusLabel').textContent =
-          statusLabels[status];
+          isClosed ? statusLabels.closed : statusLabels[status];
+        document.querySelector('.steps').style.display =
+          isClosed ? 'none' : 'grid';
 
         document.querySelectorAll('.step').forEach(step => {
           const stepIndex = statusOrder.indexOf(
