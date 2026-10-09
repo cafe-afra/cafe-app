@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>پیگیری سفارش | کافه افرا</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f5f3ef;
+      color: #292820;
+      font-family: Tahoma, Arial, sans-serif;
+    }
+    .container {
+      max-width: 520px;
+      margin: 25px auto;
+    }
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 18px #0000000b;
+    }
+    h1 { font-size: 24px; margin-top: 0; }
+    h2 { font-size: 18px; }
+    .muted { color: #777; font-size: 13px; }
+    .status {
+      border-radius: 12px;
+      padding: 16px;
+      background: #f5f3ef;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      margin: 18px 0;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .step {
+      padding: 12px;
+      border: 1px solid #e4e1da;
+      border-radius: 10px;
+      color: #777;
+    }
+    .step.active {
+      border-color: #568263;
+      background: #eef5ef;
+      color: #245333;
+      font-weight: bold;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .item:last-child { border-bottom: 0; }
+    .error { color: #a52a2a; }
+    button {
+      width: 100%;
+      padding: 13px;
+      border: 0;
+      border-radius: 10px;
+      background: #343d32;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>پیگیری سفارش کافه افرا</h1>
+      <p class="muted">وضعیت سفارش شما به‌صورت خودکار به‌روز می‌شود.</p>
+
+      <div id="message">در حال دریافت اطلاعات سفارش...</div>
+
+      <div id="orderArea" hidden>
+        <div class="status" id="statusLabel">ثبت شد</div>
+
+        <div class="steps">
+          <div class="step" data-status="received">۱. ثبت شد</div>
+          <div class="step" data-status="preparing">۲. در حال آماده‌سازی</div>
+          <div class="step" data-status="ready">۳. آمادهٔ تحویل</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="itemsCard" hidden>
+      <h2>سفارش شما</h2>
+      <div class="muted" id="tableLabel"></div>
+      <div id="items"></div>
+      <div class="item">
+        <strong>مبلغ کل</strong>
+        <strong id="total"></strong>
+      </div>
+    </section>
+
+    <button onclick="loadOrder()">به‌روزرسانی وضعیت</button>
+    <p class="muted" id="lastUpdated" style="text-align:center"></p>
+  </main>
+
+  <script>
+    const API_BASE = 'https://skateapp.ir/cafe-api/';
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+
+    const statusOrder = ['received', 'preparing', 'ready'];
+
+    const statusLabels = {
+      received: 'سفارش ثبت شد',
+      preparing: 'سفارش در حال آماده‌سازی است',
+      ready: 'سفارش آمادهٔ تحویل است'
+    };
+
+    const money = value =>
+      Number(value || 0).toLocaleString('fa-IR') + ' تومان';
+
+    function showMessage(message, isError = false) {
+      const el = document.getElementById('message');
+      el.textContent = message;
+      el.className = isError ? 'error' : '';
+    }
+
+    async function loadOrder() {
+      if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+        showMessage('لینک پیگیری معتبر نیست.', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          API_BASE + 'track_order.php?token=' +
+          encodeURIComponent(token),
+          { cache: 'no-store' }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok || !data.order) {
+          showMessage(
+            data.error || 'اطلاعات سفارش در دسترس نیست.',
+            true
+          );
+          return;
+        }
+
+        const order = data.order;
+        const status = statusOrder.includes(order.status)
+          ? order.status
+          : 'received';
+
+        showMessage('');
+        document.getElementById('orderArea').hidden = false;
+        document.getElementById('itemsCard').hidden = false;
+
+        document.getElementById('statusLabel').textContent =
+          statusLabels[status];
+
+        document.querySelectorAll('.step').forEach(step => {
+          const stepIndex = statusOrder.indexOf(
+            step.dataset.status
+          );
+          const currentIndex = statusOrder.indexOf(status);
+
+          step.classList.toggle(
+            'active',
+            stepIndex <= currentIndex
+          );
+        });
+
+        document.getElementById('tableLabel').textContent =
+          order.table ? 'میز ' + order.table : '';
+
+        const itemsEl = document.getElementById('items');
+        itemsEl.replaceChildren();
+
+        let total = 0;
+
+        (Array.isArray(order.items) ? order.items : []).forEach(item => {
+          const qty = Number(item.qty) || 0;
+          const price = Number(item.price) || 0;
+          total += qty * price;
+
+          const row = document.createElement('div');
+          row.className = 'item';
+
+          const name = document.createElement('span');
+          name.textContent = (item.name || 'محصول') + ' × ' + qty;
+
+          const amount = document.createElement('span');
+          amount.textContent = money(qty * price);
+
+          row.append(name, amount);
+          itemsEl.appendChild(row);
+        });
+
+        document.getElementById('total').textContent = money(total);
+        document.getElementById('lastUpdated').textContent =
+          'آخرین بررسی: ' +
+          new Date().toLocaleTimeString('fa-IR');
+
+      } catch (error) {
+        showMessage(
+          'اتصال به سرور برقرار نشد. اینترنت را بررسی و دوباره تلاش کنید.',
+          true
+        );
+      }
+    }
+
+    loadOrder();
+    setInterval(loadOrder, 4000);
+  </script>
+</body>
+</html>
