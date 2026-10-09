@@ -839,11 +839,41 @@
       }
 
 
+      
+      if (!data.trackingToken) {
+        throw new Error(
+          'سفارش پاسخ داده شد، اما شناسه پیگیری دریافت نشد. لطفاً دوباره سفارش ثبت نکنید و با کافه تماس بگیرید.'
+        );
+      }
+
+      const trackingNumber =
+        document.getElementById('trackingNumber');
+
+      const trackOrderBtn =
+        document.getElementById('trackOrderBtn');
+
+      if (!trackingNumber || !trackOrderBtn) {
+        throw new Error(
+          'بخش نمایش پیگیری در صفحه پیدا نشد.'
+        );
+      }
+
+      trackingNumber.textContent = data.trackingToken;
+
+      trackOrderBtn.onclick = () => {
+        location.href =
+          'track.html?token=' +
+          encodeURIComponent(data.trackingToken);
+      };
+
       document.getElementById('cartModal').style.display =
         'none';
 
       document.getElementById('successModal').style.display =
         'block';
+
+      cart = {};
+
 
 
       cart = {};
