@@ -285,10 +285,10 @@
   </div>
 </div>
 
+
 <!-- Success Modal -->
 <div id="successModal" class="modal">
   <div class="modal-box">
-
     <div class="success">
       <div class="success-icon">✅</div>
 
@@ -298,13 +298,36 @@
         سفارش شما با موفقیت برای کافه ارسال شد.
       </p>
 
-      <button onclick="location.reload()" class="submit-btn">
+      <p style="margin-top:20px">
+        شناسه پیگیری سفارش شما:
+      </p>
+
+      <div
+        id="trackingNumber"
+        dir="ltr"
+        style="font-weight:bold;font-size:18px;word-break:break-all;background:#f5f3ef;padding:12px;border-radius:10px"
+      >
+        در حال دریافت شناسه...
+      </div>
+
+      <button
+        id="trackOrderBtn"
+        class="submit-btn"
+        style="margin-top:15px"
+      >
+        پیگیری وضعیت سفارش
+      </button>
+
+      <button
+        onclick="location.reload()"
+        class="close-btn"
+      >
         بازگشت به منو
       </button>
     </div>
-
   </div>
 </div>
+
 
 <script>
 
