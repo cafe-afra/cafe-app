@@ -658,6 +658,7 @@ function setQueue(q){
 // جلوگیری از تداخل چند ذخیره هم‌زمان برای یک کلید
 const storageWriteChains = {};
 const pendingStorageWrites = new Set();
+  const storageWriteSeq = {};
 
 async function apiGet(key){
   const res = await fetch(
