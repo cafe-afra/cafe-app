@@ -1244,6 +1244,8 @@ function calcInvoiceTotals(invoice){
 
   // settling pays off tab items oldest-first, so partially-paid days shrink correctly
   async function settleDebt(debtor, amount){
+    amount = Math.min(Number(amount)||0, Number(debtor.balance)||0);
+    if(amount <= 0) return;
     let remaining = amount;
     const sortedTabs = [...(debtor.tabItems||[])];
     const newTabItems = [];
