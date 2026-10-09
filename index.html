@@ -535,6 +535,9 @@ let _jalaliYearMin = Infinity, _jalaliYearMax = -Infinity;
     d.setDate(d.getDate()+1);
   }
 })();
+  // سال‌های ناقصِ ابتدا و انتهای جدول را از لیست انتخاب حذف می‌کنیم
+_jalaliYearMin += 1;
+_jalaliYearMax -= 1;
 function jalaliToGregorianKey(jy,jm,jd){ return _jalaliToGregMap[`${jy}-${jm}-${jd}`] || null; }
 function jalaliMonthLength(jy,jm){
   for(let day=31; day>=29; day--){ if(_jalaliToGregMap[`${jy}-${jm}-${day}`]) return day; }
