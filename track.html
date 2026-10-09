@@ -37,6 +37,10 @@
       font-weight: bold;
       margin: 18px 0;
     }
+    .status.ready {
+      background: #eef5ef;
+      color: #245333;
+    }
     .steps {
       display: grid;
       gap: 10px;
@@ -73,6 +77,10 @@
       font-size: 15px;
       cursor: pointer;
     }
+    .arm-btn {
+      margin-top: 14px;
+      background: #b5651d;
+    }
     .new-order-link {
       display: none;
       width: 100%;
@@ -97,13 +105,20 @@
       <div id="message">در حال دریافت اطلاعات سفارش...</div>
 
       <div id="orderArea" hidden>
-        <div class="status" id="statusLabel">ثبت شد</div>
+        <div class="status" id="statusLabel" aria-live="polite">ثبت شد</div>
 
         <div class="steps">
           <div class="step" data-status="received">۱. ثبت شد</div>
           <div class="step" data-status="preparing">۲. در حال آماده‌سازی</div>
           <div class="step" data-status="ready">۳. آمادهٔ تحویل</div>
         </div>
+
+        <button id="armBtn" class="arm-btn" onclick="armAlerts()">
+          🔔 فعال‌سازی اعلان آماده شدن سفارش
+        </button>
+        <p class="muted" id="armHint" style="margin-bottom:0">
+          با فعال‌سازی، وقتی سفارش آماده شد گوشی شما صدا و لرزش می‌دهد (این صفحه باید باز بماند).
+        </p>
       </div>
     </section>
 
@@ -140,32 +155,170 @@
     const money = value =>
       Number(value || 0).toLocaleString('fa-IR') + ' تومان';
 
+    // ---- وضعیت پیگیری خودکار ----
+    let pollTimer = null;     // تایمر درخواست بعدی
+    let inFlight = false;     // درخواست در حال انجام (برای جلوگیری از هم‌پوشانی)
+    let stopped = false;      // وقتی سفارش بسته شد یا لینک نامعتبر است، پیگیری خودکار متوقف می‌شود
+
+    // ---- اعلان آماده شدن سفارش ----
+    let alertsArmed = false;
+    let audioCtx = null;
+    let wakeLock = null;
+    let lastStatus = null;
+    let titleTimer = null;
+    const baseTitle = document.title;
+
+    function playBeep(times) {
+      try {
+        if (!audioCtx) return;
+        const t0 = audioCtx.currentTime;
+        for (let i = 0; i < times; i++) {
+          const start = t0 + i * 0.3;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.4, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(start);
+          osc.stop(start + 0.25);
+        }
+      } catch (e) {}
+    }
+
+    function requestWakeLock() {
+      try {
+        if (navigator.wakeLock && !wakeLock) {
+          navigator.wakeLock.request('screen').then(function (l) {
+            wakeLock = l;
+            l.addEventListener('release', function () { wakeLock = null; });
+          }).catch(function () {});
+        }
+      } catch (e) {}
+    }
+
+    function stopTitleFlash() {
+      if (titleTimer) { clearInterval(titleTimer); titleTimer = null; }
+      document.title = baseTitle;
+    }
+
+    function armAlerts() {
+      alertsArmed = true;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC && !audioCtx) audioCtx = new AC();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+      playBeep(1);
+      requestWakeLock();
+
+      const btn = document.getElementById('armBtn');
+      btn.textContent = '✅ اعلان فعال است';
+      btn.disabled = true;
+      btn.style.background = '#568263';
+      document.getElementById('armHint').textContent =
+        'این صفحه را باز نگه دارید تا هنگام آماده شدن سفارش به شما خبر بدهیم.';
+    }
+
+    function notifyReady() {
+      if (!alertsArmed) return;
+      playBeep(3);
+      try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+      if (document.visibilityState !== 'visible' && !titleTimer) {
+        let on = false;
+        titleTimer = setInterval(function () {
+          on = !on;
+          document.title = on ? '✅ سفارش آماده است' : baseTitle;
+        }, 1000);
+      }
+    }
+
+    // ---- زمان‌بندی درخواست بعدی ----
+    function scheduleNext() {
+      clearTimeout(pollTimer);
+      if (stopped) return;
+
+      let delay = lastStatus === 'ready' ? 8000 : 4000;
+
+      if (document.hidden) {
+        // وقتی صفحه در پس‌زمینه است، فقط اگر اعلان فعال شده ادامه بده (کندتر)
+        if (!alertsArmed) return;
+        delay = 10000;
+      }
+
+      pollTimer = setTimeout(loadOrder, delay);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        stopTitleFlash();
+        if (alertsArmed) requestWakeLock();
+        if (!stopped) loadOrder();
+      }
+    });
+
     function showMessage(message, isError = false) {
       const el = document.getElementById('message');
       el.textContent = message;
       el.className = isError ? 'error' : '';
     }
 
+    function hideOrderSections() {
+      document.getElementById('orderArea').hidden = true;
+      document.getElementById('itemsCard').hidden = true;
+      document.getElementById('newOrderLink').style.display = 'none';
+    }
+
     async function loadOrder() {
+      if (inFlight) return;
+
       if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+        stopped = true;
         showMessage('لینک پیگیری معتبر نیست.', true);
         return;
       }
+
+      inFlight = true;
+      clearTimeout(pollTimer);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       try {
         const response = await fetch(
           API_BASE + 'track_order.php?token=' +
           encodeURIComponent(token),
-          { cache: 'no-store' }
+          { cache: 'no-store', signal: controller.signal }
         );
 
-        const data = await response.json();
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = null;
+        }
 
-        if (!response.ok || !data.ok || !data.order) {
-          showMessage(
-            data.error || 'اطلاعات سفارش در دسترس نیست.',
-            true
-          );
+        if (!response.ok || !data || !data.ok || !data.order) {
+          if (response.status === 400 || response.status === 404) {
+            // سفارش وجود ندارد یا قدیمی شده؛ ادامه‌ی پیگیری فایده‌ای ندارد
+            stopped = true;
+            hideOrderSections();
+            showMessage(
+              (data && data.error) || 'سفارش پیدا نشد.',
+              true
+            );
+          } else {
+            // مشکل موقتی؛ اطلاعات قبلی می‌ماند و دوباره تلاش می‌کنیم
+            showMessage(
+              (data && data.error) ||
+              'مشکل موقتی در سرور. چند لحظه‌ی دیگر دوباره تلاش می‌کنیم.',
+              true
+            );
+          }
           return;
         }
 
@@ -179,11 +332,24 @@
         document.getElementById('orderArea').hidden = false;
         document.getElementById('itemsCard').hidden = false;
 
-        document.getElementById('statusLabel').textContent =
+        const statusEl = document.getElementById('statusLabel');
+        statusEl.textContent =
           isClosed ? statusLabels.closed : statusLabels[status];
+        statusEl.classList.toggle('ready', status === 'ready' && !isClosed);
 
         document.querySelector('.steps').style.display =
           isClosed ? 'none' : 'grid';
+
+        const armBtn = document.getElementById('armBtn');
+        const armHint = document.getElementById('armHint');
+        armBtn.style.display = isClosed ? 'none' : 'block';
+        armHint.style.display = isClosed ? 'none' : 'block';
+
+        // اعلان: فقط وقتی وضعیت از «غیر آماده» به «آماده» رفت
+        if (lastStatus !== null && lastStatus !== 'ready' && status === 'ready' && !isClosed) {
+          notifyReady();
+        }
+        lastStatus = isClosed ? 'closed' : status;
 
         document.querySelectorAll('.step').forEach(step => {
           const stepIndex = statusOrder.indexOf(
@@ -200,7 +366,6 @@
         document.getElementById('tableLabel').textContent =
           order.table ? 'میز ' + order.table : '';
 
-        // دکمه‌ی ثبت سفارش جدید روی همین فاکتور
         const newOrderLink = document.getElementById('newOrderLink');
         if (!isClosed && order.table) {
           newOrderLink.href =
@@ -239,16 +404,22 @@
           'آخرین بررسی: ' +
           new Date().toLocaleTimeString('fa-IR');
 
+        // سفارش بسته شده؛ دیگر نیازی به پیگیری خودکار نیست
+        if (isClosed) stopped = true;
+
       } catch (error) {
         showMessage(
-          'اتصال به سرور برقرار نشد. اینترنت را بررسی و دوباره تلاش کنید.',
+          'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید؛ دوباره تلاش می‌کنیم.',
           true
         );
+      } finally {
+        clearTimeout(timeoutId);
+        inFlight = false;
+        scheduleNext();
       }
     }
 
     loadOrder();
-    setInterval(loadOrder, 4000);
   </script>
 </body>
 </html>
