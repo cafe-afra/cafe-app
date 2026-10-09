@@ -357,6 +357,10 @@
     سفارش قبلی همین مشتری (همین گوشی، همین میز، تا ۳ ساعت)
   */
   function loadLastOrder() {
+    const fromLink = urlParams.get('add');
+    if (fromLink && /^[a-f0-9]{32}$/.test(fromLink)) {
+      return { token: fromLink, table: tableNumber, savedAt: Date.now() };
+    }
     try {
       const raw = localStorage.getItem('cafeLastOrder');
       if (!raw) return null;
