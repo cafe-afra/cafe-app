@@ -581,6 +581,33 @@ function JalaliMonthPicker({jy, jm, onChange}){
 }
   // ---- Storage: PHP+MySQL API + local cache + safe offline queue ----
 const API_BASE = 'https://skateapp.ir/cafe-api/';
+  // ---- رمز مدیر: یک بار پرسیده می‌شود و در همین گوشی می‌ماند ----
+function getAdminKey(){
+  try{ return localStorage.getItem('cafeAdminKey') || ''; }catch(e){ return ''; }
+}
+function askAdminKey(){
+  const k = (window.prompt('رمز مدیر را وارد کنید:') || '').trim();
+  if(k){ try{ localStorage.setItem('cafeAdminKey', k); }catch(e){} }
+  return k;
+}
+if(!getAdminKey()) askAdminKey();
+
+const _origFetch = window.fetch.bind(window);
+window.fetch = async function(url, opts){
+  opts = opts || {};
+  const isApi = String(url).indexOf(API_BASE) === 0;
+  if(isApi){
+    opts.headers = Object.assign({}, opts.headers, {'X-Admin-Key': getAdminKey()});
+  }
+  const res = await _origFetch(url, opts);
+  if(isApi && res.status === 401 && !window._authReloading){
+    window._authReloading = true;
+    try{ localStorage.removeItem('cafeAdminKey'); }catch(e){}
+    alert('رمز مدیر اشتباه است. دوباره وارد کنید.');
+    location.reload();
+  }
+  return res;
+};
 
 function lsGet(key){
   try{
