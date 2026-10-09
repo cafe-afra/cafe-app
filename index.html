@@ -471,6 +471,7 @@
 let touchStartY = 0;
 document.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, {passive:true});
 document.addEventListener('touchmove', e => {
+  if (e.target.closest && e.target.closest('.modal')) return;
   const y = e.touches[0].clientY;
   if (window.scrollY === 0 && y > touchStartY) {
     e.preventDefault();
