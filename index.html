@@ -967,7 +967,12 @@ function calcInvoiceTotals(invoice){
   useEffect(() => {
     let loadedCount = 0;
     const totalToLoad = 5;
-    function markLoaded(){ loadedCount++; if(loadedCount>=totalToLoad) setLoading(false); }
+    function markLoaded(){}
+    const keysToCheck = ['ingredients','products','debtors','sales:' + todayKey(),'openInvoices'];
+    Promise.race([
+      Promise.all(keysToCheck.map(k => apiGet(k).catch(()=>null))),
+      new Promise(r => setTimeout(r, 4000))
+    ]).then(()=> setLoading(false));
 
     const unsubIng = subscribeKey('ingredients', (val)=>{
       const v = val ? JSON.parse(val) : [];
