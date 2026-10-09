@@ -126,8 +126,16 @@
       <h2>سفارش شما</h2>
       <div class="muted" id="tableLabel"></div>
       <div id="items"></div>
+      <div class="item" id="subtotalRow" hidden>
+        <span>جمع قبل از تخفیف</span>
+        <span id="subtotal"></span>
+      </div>
+      <div class="item" id="discountRow" hidden>
+        <span id="discountLabel">تخفیف</span>
+        <span id="discountAmount"></span>
+      </div>
       <div class="item">
-        <strong>مبلغ کل</strong>
+        <strong id="totalLabel">مبلغ کل</strong>
         <strong id="total"></strong>
       </div>
     </section>
