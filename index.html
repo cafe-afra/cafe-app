@@ -2477,7 +2477,7 @@ const monthCategories =
           {viewLoading && <div className="loading">در حال بارگذاری...</div>}
           {!viewLoading && combined.length===0 && <div className="empty-state">تراکنشی برای این روز و فیلتر ثبت نشده</div>}
           {!viewLoading && combined.map(c=>(
-            <div key={c.kind+c.id} className="card">
+            <div key={c.kind+c.id} className="card" style={c.kind==='income' ? {cursor:'pointer'} : null} onClick={()=>{ if(c.kind==='income') setViewEntry(c.raw); }}>
               <div className="card-top">
                 <div>
                   <div className="item-name">{c.label}</div>
