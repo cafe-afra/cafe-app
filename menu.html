@@ -529,12 +529,8 @@
   const API_BASE = 'https://skateapp.ir/cafe-api/';
 
   /*
-    ====== تنظیمات جشنواره ======
-    برای روشن کردن: enabled را true کنید.
-    target  = مجموع خرید (تومان) که باید به آن برسند
-    reward  = متن جایزه
-    from/to = بازه‌ی جشنواره (سال-ماه-روز میلادی)
-    فقط سفارش‌های «تکمیل‌شده» در این بازه حساب می‌شوند.
+    تنظیمات جشنواره از سرور خوانده می‌شود
+    (صفحه‌ی «🎁 جشنواره» در اپ مدیریت). مقدارهای زیر فقط پیش‌فرض‌اند.
   */
   let PROMO = {
     enabled: false,
@@ -868,6 +864,8 @@
       changeQty(el.getAttribute('data-id'), Number(el.getAttribute('data-d')));
     } else if (act === 'orders') {
       openOrders();
+    } else if (act === 'claim') {
+      claimPromo();
     }
 
   });
@@ -1296,44 +1294,63 @@
       }
     } catch (e) {}
   }
-  function promoRange() {
-    const from = new Date(PROMO.from + 'T00:00:00').getTime();
-    const to = new Date(PROMO.to + 'T23:59:59').getTime();
-    return { from: from, to: to };
+
+  async function fetchPromoStatus() {
+    const tokens = loadMyTokens().map(x => x.token);
+    const res = await fetch(
+      API_BASE + 'promo_status.php?tokens=' + tokens.join(','),
+      { cache: 'no-store' }
+    );
+    if (!res.ok) throw new Error('bad status');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'error');
+    return data.status || null;
   }
 
-  function computePromo(orders) {
-    const r = promoRange();
-    let sum = 0;
-    orders.forEach(o => {
-      const t = Number(o.createdAt) || 0;
-      if (o.status === 'closed' && t >= r.from && t <= r.to) {
-        sum += Number(o.total) || 0;
+  function promoHtml(st) {
+
+    if (!PROMO.enabled || !st || !st.enabled) return '';
+
+    const sum = Number(st.sum) || 0;
+    const left = Number(st.left) || 0;
+    const available = Number(st.available) || 0;
+    const reward = escapeHtml(PROMO.reward);
+
+    let text = '';
+    let button = '';
+    let done = false;
+
+    if (st.claimed) {
+
+      done = true;
+      text = '✅ جایزه‌ی شما دریافت شد. ممنون که با ما هستید!';
+
+    } else if (available > 0) {
+
+      done = true;
+      text = '🎉 تبریک! ' +
+        (available > 1 ? available.toLocaleString('fa-IR') + ' جایزه' : 'جایزه') +
+        ' آماده‌ی دریافت است: «' + reward + '». هنگام پرداخت این صفحه را به صندوق نشان دهید.';
+      button = '<button class="submit-btn" style="margin-top:10px" data-act="claim">' +
+        '🎁 دریافت جایزه (ویژه‌ی صندوق)</button>';
+      if (st.mode === 'repeat') {
+        text += '<br>پیشرفت جایزه‌ی بعدی: ' + formatPrice(sum % Number(st.target)) + ' از ' +
+          formatPrice(st.target) + ' تومان.';
       }
-    });
-    return { sum: sum, done: sum >= PROMO.target };
-  }
 
-  function promoHtml(summary) {
+    } else {
 
-    if (!PROMO.enabled) return '';
+      text = 'مجموع خرید شما در این جشنواره: ' + formatPrice(sum) + ' تومان. ' +
+        'با ' + formatPrice(left) + ' تومان خرید دیگر، «' + reward + '» می‌گیرید.';
 
-    const sum = summary ? summary.sum : 0;
-    const done = summary ? summary.done : false;
-    const pct = Math.min(100, Math.round(sum * 100 / PROMO.target));
-    const left = Math.max(0, PROMO.target - sum);
-
-    const text = done
-      ? '🎉 تبریک! شما به مجموع خرید لازم رسیدید. هنگام پرداخت، این صفحه را به صندوق نشان دهید تا «' +
-        escapeHtml(PROMO.reward) + '» اعمال شود.'
-      : 'مجموع خرید شما در این جشنواره: ' + formatPrice(sum) + ' تومان. ' +
-        'با ' + formatPrice(left) + ' تومان خرید دیگر، «' + escapeHtml(PROMO.reward) + '» می‌گیرید.';
+    }
 
     return `
       <div class="promo-box ${done ? 'promo-done' : ''}" data-act="orders">
         <div class="promo-title">🎁 ${escapeHtml(PROMO.title)}</div>
         <div class="promo-text">${text}</div>
-        <div class="promo-bar"><div class="promo-bar-fill" style="width:${pct}%"></div></div>
+        <div class="promo-bar"><div class="promo-bar-fill" style="width:${Number(st.progress) || 0}%"></div></div>
+        ${button}
       </div>
     `;
   }
@@ -1341,16 +1358,54 @@
   function renderPromoBox() {
     const el = document.getElementById('promoHome');
     if (el) el.innerHTML = promoHtml(promoSummary);
+    const box = document.getElementById('ordersPromo');
+    if (box && document.getElementById('ordersModal').style.display === 'block') {
+      box.innerHTML = promoHtml(promoSummary);
+    }
   }
 
   async function refreshPromo() {
     if (!PROMO.enabled) return;
     try {
-      promoSummary = computePromo(await fetchMyOrders());
+      promoSummary = await fetchPromoStatus();
     } catch (e) {
-      promoSummary = promoSummary || { sum: 0, done: false };
+      promoSummary = promoSummary || null;
     }
     renderPromoBox();
+  }
+
+  /* ثبت جایزه: فقط صندوقدار با رمز صندوق */
+  async function claimPromo() {
+
+    const pin = (window.prompt('رمز صندوق را وارد کنید (ویژه‌ی کافه):') || '').trim();
+    if (!pin) return;
+
+    try {
+
+      const res = await fetch(API_BASE + 'promo_claim.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: pin,
+          tokens: loadMyTokens().map(x => x.token)
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.ok) {
+        promoSummary = data.status || promoSummary;
+        renderPromoBox();
+        alert('✅ جایزه ثبت شد. اکنون «' + PROMO.reward + '» را به مشتری بدهید.');
+      } else {
+        alert(data.error || 'ثبت جایزه انجام نشد.');
+        refreshPromo();
+      }
+
+    } catch (e) {
+      alert('ارتباط با سرور برقرار نشد.');
+    }
+
   }
 
   async function openOrders() {
@@ -1372,9 +1427,8 @@
     }
 
     if (PROMO.enabled) {
-      promoSummary = computePromo(orders);
+      await refreshPromo();
       document.getElementById('ordersPromo').innerHTML = promoHtml(promoSummary);
-      renderPromoBox();
     }
 
     if (!orders.length) {
@@ -1422,7 +1476,10 @@
     });
 
   document.getElementById('ordersPromo')
-    .addEventListener('click', function (e) { e.stopPropagation(); });
+    .addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (e.target.closest('[data-act="claim"]')) claimPromo();
+    });
 
 
   /*
