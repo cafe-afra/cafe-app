@@ -1364,10 +1364,11 @@ function Header(){
   return (
     <div>
       <div className="receipt-header" style={{paddingBottom:14}}>
-        <button className="sync-btn" onClick={()=>setShowSync(true)}>💾 پشتیبان‌گیری</button>
-        <button className="sync-btn" style={{left:'auto',right:14}} onClick={()=>{location.href='promo.html'}}>🎁 جشنواره</button>
-        <button className="sync-btn" style={{left:'auto',right:14}} onClick={()=>{location.href='promo.html'}}>🎁 جشنواره</button>
-        <div className="brand">☕ کافه — {todayFaLabel()}</div>
+<div className="brand">☕ کافه — {todayFaLabel()}</div>
+        <div style={{display:'flex',gap:8,marginTop:8}}>
+          <button className="sync-btn" style={{position:'static'}} onClick={()=>setShowSync(true)}>💾 پشتیبان‌گیری</button>
+          <button className="sync-btn" style={{position:'static'}} onClick={()=>{location.href='promo.html'}}>🎁 جشنواره</button>
+        </div>
       </div>
       <div className="receipt-tear">
         <svg viewBox="0 0 100 6" preserveAspectRatio="none">
