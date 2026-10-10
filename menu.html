@@ -1286,6 +1286,16 @@
     return Array.isArray(data.orders) ? data.orders : [];
   }
 
+  /* تنظیمات جشنواره از سرور خوانده می‌شود (از صفحه‌ی «🎁 جشنواره» در اپ مدیریت) */
+  async function loadPromoConfig() {
+    try {
+      const res = await fetch(API_BASE + 'promo_get.php', { cache: 'no-store' });
+      const data = await res.json();
+      if (data && data.ok && data.promo) {
+        PROMO = Object.assign({}, PROMO, data.promo);
+      }
+    } catch (e) {}
+  }
   function promoRange() {
     const from = new Date(PROMO.from + 'T00:00:00').getTime();
     const to = new Date(PROMO.to + 'T23:59:59').getTime();
