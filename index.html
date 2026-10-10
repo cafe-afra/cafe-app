@@ -2230,6 +2230,7 @@ function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales,
   const [viewExpenses, setViewExpenses] = useState([]);
   const [viewSales, setViewSales] = useState([]);
   const [viewLoading, setViewLoading] = useState(true);
+  const [viewEntry, setViewEntry] = useState(null);
 
   const selGregKey = jalaliToGregorianKey(selJalali.jy, selJalali.jm, selJalali.jd) || todayKey();
   const isSelToday = selGregKey === todayKey();
