@@ -2489,7 +2489,7 @@ const monthCategories =
               </div>
               {isSelToday && (
                 <button className="btn btn-small btn-danger" style={{marginTop:8}}
-                  onClick={()=> c.kind==='expense' ? removeExpenseToday(c.raw) : onRemoveSale(c.raw)}>حذف</button>
+                  onClick={(e)=>{ e.stopPropagation(); c.kind==='expense' ? removeExpenseToday(c.raw) : onRemoveSale(c.raw); }}>حذف</button>
               )}
             </div>
           ))}
