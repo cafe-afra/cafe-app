@@ -31,6 +31,8 @@
     #msg.ok { color: #2e7d32; }
     #msg.err { color: #b71c1c; }
     .preview { font-size: 14px; line-height: 2; }
+    label.opt { display: flex; align-items: flex-start; gap: 8px; font-weight: normal; line-height: 1.8; margin: 8px 0; }
+    label.opt input { margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -81,6 +83,18 @@
   </div>
 
   <div class="card">
+    <div style="font-weight:bold;margin-bottom:8px">بعد از رسیدن به مبلغ هدف</div>
+    <label class="opt"><input type="radio" name="mode" value="repeat" checked>
+      هر بار که به مبلغ هدف رسید، یک جایزه بگیرد و نوار از صفر شروع شود (باقی‌مانده‌ی خرید حفظ می‌شود)</label>
+    <label class="opt"><input type="radio" name="mode" value="once">
+      هر گوشی فقط یک جایزه در کل جشنواره بگیرد</label>
+    <label for="pin" style="margin-top:16px">رمز صندوق</label>
+    <input type="text" id="pin" maxlength="12" autocomplete="off" inputmode="latin" dir="ltr" placeholder="۴ تا ۱۲ حرف انگلیسی یا عدد">
+    <div class="hint" id="pinHint"></div>
+    <div class="hint">وقتی مشتری به جایزه رسید، صندوقدار با زدن «دریافت جایزه» روی گوشی او و وارد کردن این رمز، جایزه را ثبت می‌کند تا دوباره استفاده نشود. این رمز را به مشتری ندهید و با رمز مدیر فرق دارد.</div>
+  </div>
+
+  <div class="card">
     <div style="font-weight:bold;margin-bottom:6px">پیش‌نمایش برای مشتری</div>
     <div class="preview" id="preview"></div>
   </div>
@@ -121,11 +135,23 @@
     $('toFa').textContent = faDate($('to').value);
     const t = Number($('target').value) || 0;
     $('targetFa').textContent = t ? t.toLocaleString('fa-IR') + ' تومان' : '';
+    $('pinHint').textContent = hasPin
+      ? 'رمز صندوق تنظیم شده است. فقط برای تغییر، رمز جدید را بنویسید.'
+      : '⚠️ هنوز رمز صندوق تنظیم نشده؛ تا آن را ننویسید جایزه قابل ثبت نیست.';
     $('preview').textContent = on
       ? '🎁 ' + $('title').value + ' — با مجموع خرید ' + t.toLocaleString('fa-IR') +
         ' تومان، «' + $('reward').value + '» می‌گیرید.'
       : 'جشنواره خاموش است و چیزی نمایش داده نمی‌شود.';
   }
+
+  function getMode() {
+    const r = document.querySelector('input[name=mode]:checked');
+    return r ? r.value : 'repeat';
+  }
+
+  let hasPin = false;
+
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', refreshUi));
 
   ['enabled', 'title', 'target', 'reward', 'from', 'to'].forEach(id => {
     $(id).addEventListener('input', refreshUi);
@@ -144,6 +170,8 @@
       $('reward').value = p.reward;
       $('from').value = p.from;
       $('to').value = p.to;
+      document.querySelectorAll('input[name=mode]').forEach(r => { r.checked = (r.value === p.mode); });
+      hasPin = !!p.hasPin;
       refreshUi();
     } catch (e) {
       showMsg('دریافت تنظیمات ممکن نشد. اینترنت را بررسی کنید.', false);
@@ -164,7 +192,9 @@
       target: Number($('target').value) || 0,
       reward: $('reward').value.trim(),
       from: $('from').value,
-      to: $('to').value
+      to: $('to').value,
+      mode: getMode(),
+      pin: $('pin').value.trim()
     };
 
     if (!body.title || !body.reward || body.target < 1 || !body.from || !body.to) {
@@ -173,6 +203,11 @@
     }
     if (body.from > body.to) {
       showMsg('تاریخ پایان باید بعد از شروع باشد.', false);
+      return;
+    }
+
+    if (!hasPin && !body.pin) {
+      showMsg('رمز صندوق را هم بنویسید (۴ تا ۱۲ حرف انگلیسی یا عدد).', false);
       return;
     }
 
@@ -192,6 +227,9 @@
       } else {
         const data = await res.json();
         if (data.ok) {
+          hasPin = !!data.hasPin;
+          $('pin').value = '';
+          refreshUi();
           showMsg('✅ ذخیره شد. مشتری‌ها تا چند ثانیه‌ی دیگر تغییر را می‌بینند.', true);
         } else {
           showMsg(data.error || 'ذخیره نشد.', false);
