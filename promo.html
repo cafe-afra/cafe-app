@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>تنظیمات جشنواره</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f3ef; color: #222; font-family: Tahoma, Arial, sans-serif; }
+    header { background: #222; color: #fff; padding: 18px 16px; display: flex; align-items: center; gap: 12px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header a { color: #fff; text-decoration: none; background: rgba(255,255,255,.15); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+    main { max-width: 600px; margin: auto; padding: 16px 14px 60px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 14px; }
+    label { display: block; font-weight: bold; margin: 14px 0 6px; font-size: 14px; }
+    input[type=text], input[type=number], input[type=date] {
+      width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; font-family: inherit; background: #fff;
+    }
+    .hint { font-size: 12px; color: #777; margin-top: 4px; line-height: 1.7; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .switch input { width: 26px; height: 26px; }
+    .state { font-weight: bold; }
+    .on { color: #2e7d32; }
+    .off { color: #b71c1c; }
+    button.save { width: 100%; border: none; background: #222; color: #fff; padding: 15px; border-radius: 12px; font-size: 17px; cursor: pointer; font-family: inherit; }
+    button.save:disabled { background: #aaa; }
+    #msg { text-align: center; margin: 12px 0; min-height: 22px; font-size: 14px; }
+    #msg.ok { color: #2e7d32; }
+    #msg.err { color: #b71c1c; }
+    .preview { font-size: 14px; line-height: 2; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html">→ بازگشت</a>
+  <h1>🎁 تنظیمات جشنواره</h1>
+</header>
+
+<main>
+
+  <div class="card">
+    <div class="switch">
+      <div>
+        <div style="font-weight:bold">وضعیت جشنواره</div>
+        <div class="state off" id="stateText">خاموش</div>
+      </div>
+      <input type="checkbox" id="enabled">
+    </div>
+    <div class="hint">وقتی خاموش باشد، مشتری‌ها هیچ نوار جشنواره‌ای نمی‌بینند.</div>
+  </div>
+
+  <div class="card">
+    <label for="title">عنوان جشنواره</label>
+    <input type="text" id="title" maxlength="60">
+
+    <label for="target">مبلغ هدف (تومان)</label>
+    <input type="number" id="target" min="1" step="1000" inputmode="numeric">
+    <div class="hint" id="targetFa"></div>
+
+    <label for="reward">جایزه</label>
+    <input type="text" id="reward" maxlength="80">
+    <div class="hint">مثلاً «۱۰٪ تخفیف» یا «یک قهوه رایگان». همین متن به مشتری نشان داده می‌شود.</div>
+
+    <div class="row">
+      <div>
+        <label for="from">شروع</label>
+        <input type="date" id="from">
+        <div class="hint" id="fromFa"></div>
+      </div>
+      <div>
+        <label for="to">پایان</label>
+        <input type="date" id="to">
+        <div class="hint" id="toFa"></div>
+      </div>
+    </div>
+    <div class="hint">فقط سفارش‌های بسته‌شده در این بازه، بعد از تخفیف، جمع زده می‌شوند.</div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:bold;margin-bottom:6px">پیش‌نمایش برای مشتری</div>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <div id="msg"></div>
+  <button class="save" id="saveBtn">💾 ذخیره</button>
+
+</main>
+
+<script>
+  const API_BASE = 'https://skateapp.ir/cafe-api/';
+
+  const $ = id => document.getElementById(id);
+
+  function adminKey() {
+    try { return localStorage.getItem('cafeAdminKey') || ''; } catch (e) { return ''; }
+  }
+
+  function showMsg(text, ok) {
+    const m = $('msg');
+    m.textContent = text;
+    m.className = ok ? 'ok' : 'err';
+  }
+
+  function faDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
+    try {
+      return 'تاریخ شمسی: ' + new Date(value + 'T12:00:00')
+        .toLocaleDateString('fa-IR-u-ca-persian', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch (e) { return ''; }
+  }
+
+  function refreshUi() {
+    const on = $('enabled').checked;
+    $('stateText').textContent = on ? 'روشن' : 'خاموش';
+    $('stateText').className = 'state ' + (on ? 'on' : 'off');
+    $('fromFa').textContent = faDate($('from').value);
+    $('toFa').textContent = faDate($('to').value);
+    const t = Number($('target').value) || 0;
+    $('targetFa').textContent = t ? t.toLocaleString('fa-IR') + ' تومان' : '';
+    $('preview').textContent = on
+      ? '🎁 ' + $('title').value + ' — با مجموع خرید ' + t.toLocaleString('fa-IR') +
+        ' تومان، «' + $('reward').value + '» می‌گیرید.'
+      : 'جشنواره خاموش است و چیزی نمایش داده نمی‌شود.';
+  }
+
+  ['enabled', 'title', 'target', 'reward', 'from', 'to'].forEach(id => {
+    $(id).addEventListener('input', refreshUi);
+    $(id).addEventListener('change', refreshUi);
+  });
+
+  async function load() {
+    try {
+      const res = await fetch(API_BASE + 'promo_get.php', { cache: 'no-store' });
+      const data = await res.json();
+      if (!data.ok) throw new Error('bad');
+      const p = data.promo;
+      $('enabled').checked = !!p.enabled;
+      $('title').value = p.title;
+      $('target').value = p.target;
+      $('reward').value = p.reward;
+      $('from').value = p.from;
+      $('to').value = p.to;
+      refreshUi();
+    } catch (e) {
+      showMsg('دریافت تنظیمات ممکن نشد. اینترنت را بررسی کنید.', false);
+    }
+  }
+
+  $('saveBtn').addEventListener('click', async function () {
+    let key = adminKey();
+    if (!key) {
+      key = (window.prompt('رمز مدیر را وارد کنید:') || '').trim();
+      if (key) { try { localStorage.setItem('cafeAdminKey', key); } catch (e) {} }
+    }
+    if (!key) { showMsg('رمز مدیر لازم است.', false); return; }
+
+    const body = {
+      enabled: $('enabled').checked,
+      title: $('title').value.trim(),
+      target: Number($('target').value) || 0,
+      reward: $('reward').value.trim(),
+      from: $('from').value,
+      to: $('to').value
+    };
+
+    if (!body.title || !body.reward || body.target < 1 || !body.from || !body.to) {
+      showMsg('همه‌ی فیلدها را پر کنید.', false);
+      return;
+    }
+    if (body.from > body.to) {
+      showMsg('تاریخ پایان باید بعد از شروع باشد.', false);
+      return;
+    }
+
+    const btn = $('saveBtn');
+    btn.disabled = true;
+    showMsg('در حال ذخیره...', true);
+
+    try {
+      const res = await fetch(API_BASE + 'promo_set.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+        body: JSON.stringify(body)
+      });
+      if (res.status === 401) {
+        try { localStorage.removeItem('cafeAdminKey'); } catch (e) {}
+        showMsg('رمز مدیر اشتباه است. دوباره ذخیره را بزنید و رمز درست را وارد کنید.', false);
+      } else {
+        const data = await res.json();
+        if (data.ok) {
+          showMsg('✅ ذخیره شد. مشتری‌ها تا چند ثانیه‌ی دیگر تغییر را می‌بینند.', true);
+        } else {
+          showMsg(data.error || 'ذخیره نشد.', false);
+        }
+      }
+    } catch (e) {
+      showMsg('ارتباط با سرور برقرار نشد.', false);
+    }
+
+    btn.disabled = false;
+  });
+
+  load();
+</script>
+
+</body>
+</html>
