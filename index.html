@@ -2493,6 +2493,43 @@ const monthCategories =
               )}
             </div>
           ))}
+          {viewEntry && (()=>{
+            const o = viewEntry;
+            const its = o.items || [];
+            const sub = o.subtotal!==undefined ? o.subtotal : its.reduce((x,it)=>x+it.price*it.qty,0);
+            const dp = Number(o.discountPercent)||0;
+            const da = o.discountAmount!==undefined ? o.discountAmount : Math.round(sub*dp/100);
+            const tot = o.total!==undefined ? o.total : sub-da;
+            return (
+              <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setViewEntry(null);}}>
+                <div className="modal">
+                  <div className="modal-title">🧾 فاکتور — {o.time}</div>
+                  <div className="item-sub" style={{marginBottom:10}}>
+                    {o.type==='settlement' ? 'دریافت تسویه' : (o.paid ? 'نقدی' : 'نسیه')}
+                    {o.debtorName ? ' · ' + o.debtorName : ''}
+                  </div>
+                  {o.type==='settlement' && <div className="item-name">{o.name}</div>}
+                  {its.map((it,i)=>(
+                    <div key={i} className="card-top" style={{padding:'6px 0', borderBottom:'1px solid var(--border, #eee)'}}>
+                      <div className="item-name">{it.name} × {it.qty}</div>
+                      <span className="oprice">{fmt(it.price*it.qty)}</span>
+                    </div>
+                  ))}
+                  {o.type!=='settlement' && (
+                    <div style={{marginTop:10}}>
+                      {dp>0 && <div className="card-top"><div className="item-sub">جمع</div><span>{fmt(sub)}</span></div>}
+                      {dp>0 && <div className="card-top"><div className="item-sub">تخفیف {dp}٪</div><span>-{fmt(da)}</span></div>}
+                    </div>
+                  )}
+                  <div className="card-top" style={{marginTop:8}}>
+                    <div className="item-name">مبلغ نهایی</div>
+                    <span className="oprice" style={{color:'var(--sage)'}}>{fmt(tot)}</span>
+                  </div>
+                  <button className="btn" style={{marginTop:14, width:'100%'}} onClick={()=>setViewEntry(null)}>بستن</button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
