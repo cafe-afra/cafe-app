@@ -1207,7 +1207,7 @@ function calcInvoiceTotals(invoice){
     const totals = calcInvoiceTotals(invoice);
     const entry = {
       id: uid(), type:'invoice', items: invoice.items, ...totals,
-      paid:true, customerType:invoice.customerType, debtorId:invoice.debtorId, debtorName:invoice.debtorName,
+      paid:true, customerType:invoice.customerType, debtorId:invoice.debtorId, debtorName:invoice.debtorName, trackingToken:invoice.trackingToken||null,
       time: nowFaTime(),
     };
     persistTodaySales([...todaySalesRef.current, entry]);
