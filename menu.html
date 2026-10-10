@@ -52,16 +52,94 @@
       color: #777;
     }
 
-    .category {
-      margin-top: 25px;
+    /* ---------- صفحه‌ی اول: دسته‌ها ---------- */
+
+    .section-heading {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 8px 0 12px;
     }
 
-    .category-title {
+    .category-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .category-tile {
+      position: relative;
+      background: white;
+      border: none;
+      border-radius: 16px;
+      padding: 26px 10px;
+      min-height: 110px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      cursor: pointer;
+      font-family: inherit;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .category-tile:active {
+      transform: scale(.97);
+    }
+
+    .category-tile .tile-name {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .category-tile .tile-count {
+      font-size: 13px;
+      color: #777;
+    }
+
+    .tile-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: #c0392b;
+      color: white;
+      min-width: 24px;
+      height: 24px;
+      line-height: 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      padding: 0 6px;
+    }
+
+    .tile-wide {
+      grid-column: 1 / -1;
+    }
+
+    /* ---------- داخل یک دسته ---------- */
+
+    .category-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .back-btn {
+      border: none;
+      background: #222;
+      color: white;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .category-bar-title {
       font-size: 20px;
       font-weight: bold;
-      margin: 0 0 12px;
-      padding-right: 8px;
-      border-right: 4px solid #222;
     }
 
     .product {
@@ -123,6 +201,94 @@
       text-align: center;
       font-weight: bold;
     }
+
+    /* ---------- جشنواره و سفارش‌های من ---------- */
+
+    .promo-box {
+      background: #fff8e6;
+      border: 1px solid #f0d58a;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      cursor: pointer;
+    }
+
+    .promo-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .promo-text {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 8px;
+      line-height: 1.8;
+    }
+
+    .promo-bar {
+      height: 12px;
+      background: #eee;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .promo-bar-fill {
+      height: 100%;
+      background: #d4a017;
+      width: 0;
+    }
+
+    .promo-done {
+      background: #e8f5e9;
+      border-color: #9ccc9f;
+    }
+
+    .promo-done .promo-bar-fill {
+      background: #4c9a52;
+    }
+
+    .order-card {
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .order-status {
+      font-size: 12px;
+      background: #eee;
+      border-radius: 10px;
+      padding: 2px 10px;
+      white-space: nowrap;
+    }
+
+    .order-items {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    .order-total {
+      font-weight: bold;
+      margin-top: 6px;
+    }
+
+    .order-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 13px;
+      color: #1a5fb4;
+    }
+
+    /* ---------- سبد ---------- */
 
     .cart-bar {
       position: fixed;
@@ -244,7 +410,6 @@
     }
   </style>
 </head>
-
 <body>
 
 <header>
@@ -282,7 +447,33 @@
       ثبت سفارش
     </button>
 
-    <button onclick="closeCart()" class="close-btn">
+    <button id="closeCartBtn" class="close-btn">
+      بستن
+    </button>
+
+  </div>
+</div>
+
+
+<!-- My Orders Modal -->
+<div id="ordersModal" class="modal">
+  <div class="modal-box">
+
+    <div class="modal-title">
+      📋 سفارش‌های من
+    </div>
+
+    <div id="ordersPromo"></div>
+
+    <div id="ordersList">
+      <div class="loading">در حال دریافت...</div>
+    </div>
+
+    <p style="font-size:12px;color:#888;text-align:center;line-height:1.8">
+      این فهرست فقط روی همین گوشی نگه‌داری می‌شود.
+    </p>
+
+    <button id="closeOrdersBtn" class="close-btn">
       بستن
     </button>
 
@@ -338,6 +529,23 @@
   const API_BASE = 'https://skateapp.ir/cafe-api/';
 
   /*
+    ====== تنظیمات جشنواره ======
+    برای روشن کردن: enabled را true کنید.
+    target  = مجموع خرید (تومان) که باید به آن برسند
+    reward  = متن جایزه
+    from/to = بازه‌ی جشنواره (سال-ماه-روز میلادی)
+    فقط سفارش‌های «تکمیل‌شده» در این بازه حساب می‌شوند.
+  */
+  const PROMO = {
+    enabled: false,
+    title: 'جشنواره‌ی کافه افرا',
+    target: 500000,
+    reward: '۱۰٪ تخفیف',
+    from: '2026-10-10',
+    to: '2026-11-10'
+  };
+
+  /*
     شماره میز از آدرس خوانده می‌شود.
     مثال: menu.html?table=5
   */
@@ -348,18 +556,25 @@
     urlParams.get('t') ||
     '';
 
+  // لینک «ثبت سفارش جدید» در صفحه‌ی پیگیری: ...&add=شناسه
+  const addParam = (urlParams.get('add') || '').toLowerCase();
+  const addTokenFromUrl = /^[a-f0-9]{32}$/.test(addParam) ? addParam : '';
+
   let products = [];
   let cart = {};
   let currentOrderId = null;
+  let currentCategory = null;     // null = صفحه‌ی اول (فهرست دسته‌ها)
+  let promoSummary = null;        // نتیجه‌ی آخرین محاسبه‌ی جشنواره
 
+
+  /* ---------- حافظه‌ی همین گوشی ---------- */
 
   /*
     سفارش قبلی همین مشتری (همین گوشی، همین میز، تا ۳ ساعت)
   */
   function loadLastOrder() {
-    const fromLink = urlParams.get('add');
-    if (fromLink && /^[a-f0-9]{32}$/.test(fromLink)) {
-      return { token: fromLink, table: tableNumber, savedAt: Date.now() };
+    if (addTokenFromUrl) {
+      return { token: addTokenFromUrl, table: tableNumber };
     }
     try {
       const raw = localStorage.getItem('cafeLastOrder');
@@ -381,6 +596,32 @@
         table: tableNumber,
         savedAt: Date.now()
       }));
+    } catch (e) {}
+    rememberToken(token);
+  }
+
+  /* فهرست شناسه‌های سفارش‌های این گوشی (تا ۹۰ روز، حداکثر ۴۰ تا) */
+  const MY_ORDERS_KEY = 'cafeMyOrders';
+  const KEEP_MS = 90 * 24 * 60 * 60 * 1000;
+
+  function loadMyTokens() {
+    try {
+      const list = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '[]');
+      if (!Array.isArray(list)) return [];
+      return list.filter(x =>
+        x && /^[a-f0-9]{32}$/.test(x.token) &&
+        Date.now() - Number(x.savedAt || 0) < KEEP_MS
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function rememberToken(token) {
+    try {
+      const list = loadMyTokens().filter(x => x.token !== token);
+      list.unshift({ token: token, savedAt: Date.now() });
+      localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(list.slice(0, 40)));
     } catch (e) {}
   }
 
@@ -426,6 +667,7 @@
         : [];
 
       renderMenu();
+      refreshPromo();
 
     } catch (error) {
 
@@ -444,22 +686,9 @@
 
 
   /*
-    نمایش محصولات
+    دسته‌بندی محصولات (ترتیب دسته‌ها همان ترتیب اولین دیده‌شدن است)
   */
-  function renderMenu() {
-
-    const menu = document.getElementById('menu');
-
-    if (!products.length) {
-
-      menu.innerHTML = `
-        <div class="empty">
-          فعلاً محصولی برای نمایش وجود ندارد.
-        </div>
-      `;
-
-      return;
-    }
+  function groupByCategory() {
 
     const categories = {};
 
@@ -476,102 +705,199 @@
 
     });
 
+    return categories;
 
-    menu.innerHTML = '';
+  }
 
 
-    Object.keys(categories).forEach(category => {
+  function categoryQty(list) {
+    return list.reduce((sum, p) => sum + (cart[p.id] || 0), 0);
+  }
 
-      const section = document.createElement('section');
 
-      section.className = 'category';
+  /*
+    نمایش منو: صفحه‌ی اول (دسته‌ها) یا محصولات یک دسته
+  */
+  function renderMenu() {
 
-      section.innerHTML = `
-        <div class="category-title">
-          ${escapeHtml(category)}
+    const menu = document.getElementById('menu');
+
+    if (!products.length) {
+
+      menu.innerHTML = `
+        <div class="empty">
+          فعلاً محصولی برای نمایش وجود ندارد.
         </div>
       `;
 
+      updateCartButton();
 
-      categories[category].forEach(product => {
+      return;
+    }
 
-        const quantity = cart[product.id] || 0;
+    const categories = groupByCategory();
 
-        const div = document.createElement('div');
+    // اگر دسته‌ی انتخاب‌شده دیگر وجود ندارد، به صفحه‌ی اول برگرد
+    if (currentCategory !== null && !categories[currentCategory]) {
+      currentCategory = null;
+    }
 
-        div.className = 'product';
-
-        div.innerHTML = `
-
-          <div class="product-info">
-
-            <div class="product-name">
-              ${escapeHtml(product.name)}
-            </div>
-
-            <div class="product-price">
-              ${formatPrice(product.price)} تومان
-            </div>
-
-          </div>
-
-          <div class="product-action">
-
-            ${
-              quantity > 0
-
-              ?
-
-              `
-              <div class="qty-box">
-
-                <button
-                  class="qty-btn"
-                  onclick="changeQty('${product.id}', -1)">
-                  −
-                </button>
-
-                <div class="qty">
-                  ${quantity}
-                </div>
-
-                <button
-                  class="qty-btn"
-                  onclick="changeQty('${product.id}', 1)">
-                  +
-                </button>
-
-              </div>
-              `
-
-              :
-
-              `
-              <button
-                class="add-btn"
-                onclick="changeQty('${product.id}', 1)">
-                +
-              </button>
-              `
-
-            }
-
-          </div>
-
-        `;
-
-        section.appendChild(div);
-
-      });
-
-
-      menu.appendChild(section);
-
-    });
+    if (currentCategory === null) {
+      renderHome(menu, categories);
+    } else {
+      renderCategory(menu, categories[currentCategory]);
+    }
 
     updateCartButton();
 
   }
+
+
+  function renderHome(menu, categories) {
+
+    const names = Object.keys(categories);
+
+    let html = '';
+
+    if (PROMO.enabled) {
+      html += '<div id="promoHome"></div>';
+    }
+
+    if (loadMyTokens().length > 0) {
+      html += `
+        <div class="category-grid" style="margin-bottom:14px">
+          <button class="category-tile tile-wide" style="min-height:64px;padding:14px"
+                  data-act="orders">
+            <span class="tile-name">📋 سفارش‌های من</span>
+          </button>
+        </div>
+      `;
+    }
+
+    html += '<div class="section-heading">دسته‌بندی منو</div>';
+    html += '<div class="category-grid">';
+
+    names.forEach((name, index) => {
+
+      const list = categories[name];
+      const qty = categoryQty(list);
+
+      html += `
+        <button class="category-tile" data-act="open" data-cat="${index}">
+          ${qty > 0 ? `<span class="tile-badge">${qty.toLocaleString('fa-IR')}</span>` : ''}
+          <span class="tile-name">${escapeHtml(name)}</span>
+          <span class="tile-count">${list.length.toLocaleString('fa-IR')} محصول</span>
+        </button>
+      `;
+
+    });
+
+    html += '</div>';
+
+    menu.innerHTML = html;
+
+    renderPromoBox();
+
+  }
+
+
+  function renderCategory(menu, list) {
+
+    let html = `
+      <div class="category-bar">
+        <button class="back-btn" data-act="back">→ دسته‌ها</button>
+        <div class="category-bar-title">${escapeHtml(currentCategory)}</div>
+      </div>
+    `;
+
+    list.forEach(product => {
+
+      const quantity = cart[product.id] || 0;
+      const id = escapeHtml(product.id);
+
+      html += `
+        <div class="product">
+
+          <div class="product-info">
+            <div class="product-name">${escapeHtml(product.name)}</div>
+            <div class="product-price">${formatPrice(product.price)} تومان</div>
+          </div>
+
+          <div class="product-action">
+            ${
+              quantity > 0
+              ? `
+                <div class="qty-box">
+                  <button class="qty-btn" data-act="qty" data-id="${id}" data-d="-1">−</button>
+                  <div class="qty">${quantity.toLocaleString('fa-IR')}</div>
+                  <button class="qty-btn" data-act="qty" data-id="${id}" data-d="1">+</button>
+                </div>
+              `
+              : `
+                <button class="add-btn" data-act="qty" data-id="${id}" data-d="1">+</button>
+              `
+            }
+          </div>
+
+        </div>
+      `;
+
+    });
+
+    menu.innerHTML = html;
+
+  }
+
+
+  /* کلیک‌ها در منو (روی دسته‌ها و محصولات) */
+  document.getElementById('menu').addEventListener('click', function (e) {
+
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+
+    const act = el.getAttribute('data-act');
+
+    if (act === 'open') {
+      const names = Object.keys(groupByCategory());
+      const name = names[Number(el.getAttribute('data-cat'))];
+      if (name !== undefined) openCategory(name);
+    } else if (act === 'back') {
+      goHome();
+    } else if (act === 'qty') {
+      changeQty(el.getAttribute('data-id'), Number(el.getAttribute('data-d')));
+    } else if (act === 'orders') {
+      openOrders();
+    }
+
+  });
+
+
+  function openCategory(name) {
+    currentCategory = name;
+    try { history.pushState({ cat: name }, ''); } catch (e) {}
+    renderMenu();
+    window.scrollTo(0, 0);
+  }
+
+  function goHome() {
+    // اگر برای این دسته یک مرحله به تاریخچه اضافه کرده‌ایم، با همان برگرد
+    if (history.state && history.state.cat !== undefined) {
+      history.back();
+    } else {
+      currentCategory = null;
+      renderMenu();
+      window.scrollTo(0, 0);
+    }
+  }
+
+  // دکمه‌ی «برگشت» گوشی: از داخل دسته به صفحه‌ی اول
+  window.addEventListener('popstate', function () {
+    if (currentCategory !== null) {
+      currentCategory = null;
+      renderMenu();
+      window.scrollTo(0, 0);
+    }
+  });
 
 
   /*
@@ -604,6 +930,10 @@
 
 
     renderMenu();
+
+    if (document.getElementById('cartModal').style.display === 'block') {
+      renderCart();
+    }
 
   }
 
@@ -668,7 +998,7 @@
       button.disabled = false;
 
       button.textContent =
-        `🛒 مشاهده سفارش | ${count} قلم | ${formatPrice(total)} تومان`;
+        `🛒 مشاهده سفارش | ${count.toLocaleString('fa-IR')} قلم | ${formatPrice(total)} تومان`;
 
     }
 
@@ -680,6 +1010,9 @@
   */
   document.getElementById('cartButton')
     .addEventListener('click', openCart);
+
+  document.getElementById('closeCartBtn')
+    .addEventListener('click', closeCart);
 
 
   function openCart() {
@@ -701,6 +1034,14 @@
       'none';
 
   }
+
+
+  /* کلیک‌های داخل سبد */
+  document.getElementById('cartItems').addEventListener('click', function (e) {
+    const el = e.target.closest('[data-act="qty"]');
+    if (!el) return;
+    changeQty(el.getAttribute('data-id'), Number(el.getAttribute('data-d')));
+  });
 
 
   /*
@@ -739,6 +1080,7 @@
 
         total += itemTotal;
 
+        const id = escapeHtml(item.productId);
 
         return `
 
@@ -760,21 +1102,13 @@
 
             <div class="qty-box">
 
-              <button
-                class="qty-btn"
-                onclick="changeQty('${item.productId}', -1); renderCart();">
-                −
-              </button>
+              <button class="qty-btn" data-act="qty" data-id="${id}" data-d="-1">−</button>
 
               <span class="qty">
-                ${item.qty}
+                ${item.qty.toLocaleString('fa-IR')}
               </span>
 
-              <button
-                class="qty-btn"
-                onclick="changeQty('${item.productId}', 1); renderCart();">
-                +
-              </button>
+              <button class="qty-btn" data-act="qty" data-id="${id}" data-d="1">+</button>
 
             </div>
 
@@ -930,6 +1264,154 @@
     }
 
   }
+
+
+  /* ---------- سفارش‌های من و جشنواره ---------- */
+
+  const STATUS_TEXT = {
+    received: 'ثبت شد',
+    preparing: 'در حال آماده‌سازی',
+    ready: 'آماده تحویل',
+    closed: 'تکمیل شد'
+  };
+
+  async function fetchMyOrders() {
+    const tokens = loadMyTokens().map(x => x.token);
+    if (!tokens.length) return [];
+    const res = await fetch(API_BASE + 'my_orders.php?tokens=' + tokens.join(','));
+    if (!res.ok) throw new Error('bad status');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'error');
+    return Array.isArray(data.orders) ? data.orders : [];
+  }
+
+  function promoRange() {
+    const from = new Date(PROMO.from + 'T00:00:00').getTime();
+    const to = new Date(PROMO.to + 'T23:59:59').getTime();
+    return { from: from, to: to };
+  }
+
+  function computePromo(orders) {
+    const r = promoRange();
+    let sum = 0;
+    orders.forEach(o => {
+      const t = Number(o.createdAt) || 0;
+      if (o.status === 'closed' && t >= r.from && t <= r.to) {
+        sum += Number(o.total) || 0;
+      }
+    });
+    return { sum: sum, done: sum >= PROMO.target };
+  }
+
+  function promoHtml(summary) {
+
+    if (!PROMO.enabled) return '';
+
+    const sum = summary ? summary.sum : 0;
+    const done = summary ? summary.done : false;
+    const pct = Math.min(100, Math.round(sum * 100 / PROMO.target));
+    const left = Math.max(0, PROMO.target - sum);
+
+    const text = done
+      ? '🎉 تبریک! شما به مجموع خرید لازم رسیدید. هنگام پرداخت، این صفحه را به صندوق نشان دهید تا «' +
+        escapeHtml(PROMO.reward) + '» اعمال شود.'
+      : 'مجموع خرید شما در این جشنواره: ' + formatPrice(sum) + ' تومان. ' +
+        'با ' + formatPrice(left) + ' تومان خرید دیگر، «' + escapeHtml(PROMO.reward) + '» می‌گیرید.';
+
+    return `
+      <div class="promo-box ${done ? 'promo-done' : ''}" data-act="orders">
+        <div class="promo-title">🎁 ${escapeHtml(PROMO.title)}</div>
+        <div class="promo-text">${text}</div>
+        <div class="promo-bar"><div class="promo-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }
+
+  function renderPromoBox() {
+    const el = document.getElementById('promoHome');
+    if (el) el.innerHTML = promoHtml(promoSummary);
+  }
+
+  async function refreshPromo() {
+    if (!PROMO.enabled) return;
+    try {
+      promoSummary = computePromo(await fetchMyOrders());
+    } catch (e) {
+      promoSummary = promoSummary || { sum: 0, done: false };
+    }
+    renderPromoBox();
+  }
+
+  async function openOrders() {
+
+    const modal = document.getElementById('ordersModal');
+    const list = document.getElementById('ordersList');
+
+    modal.style.display = 'block';
+    list.innerHTML = '<div class="loading">در حال دریافت...</div>';
+    document.getElementById('ordersPromo').innerHTML = '';
+
+    let orders;
+
+    try {
+      orders = await fetchMyOrders();
+    } catch (e) {
+      list.innerHTML = '<div class="error">دریافت سفارش‌ها ممکن نشد. دوباره تلاش کنید.</div>';
+      return;
+    }
+
+    if (PROMO.enabled) {
+      promoSummary = computePromo(orders);
+      document.getElementById('ordersPromo').innerHTML = promoHtml(promoSummary);
+      renderPromoBox();
+    }
+
+    if (!orders.length) {
+      list.innerHTML = '<div class="empty">هنوز سفارشی روی این گوشی ثبت نشده است.</div>';
+      return;
+    }
+
+    list.innerHTML = orders.map(o => {
+
+      const d = new Date(Number(o.createdAt) || 0);
+      const when = d.toLocaleDateString('fa-IR') + ' ' +
+        d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+      const itemsText = (o.items || [])
+        .map(it => escapeHtml(it.name) + ' ×' + Number(it.qty).toLocaleString('fa-IR'))
+        .join('، ');
+
+      const discountText = Number(o.discountPercent) > 0
+        ? ' (با ' + Number(o.discountPercent).toLocaleString('fa-IR') + '٪ تخفیف)'
+        : '';
+
+      const link = o.status !== 'closed'
+        ? '<a class="order-link" href="track.html?token=' + encodeURIComponent(o.token) + '">پیگیری این سفارش</a>'
+        : '';
+
+      return `
+        <div class="order-card">
+          <div class="order-head">
+            <span>${when}${o.table ? ' — میز ' + escapeHtml(o.table) : ''}</span>
+            <span class="order-status">${STATUS_TEXT[o.status] || ''}</span>
+          </div>
+          <div class="order-items">${itemsText}</div>
+          <div class="order-total">${formatPrice(o.total)} تومان${discountText}</div>
+          ${link}
+        </div>
+      `;
+
+    }).join('');
+
+  }
+
+  document.getElementById('closeOrdersBtn')
+    .addEventListener('click', function () {
+      document.getElementById('ordersModal').style.display = 'none';
+    });
+
+  document.getElementById('ordersPromo')
+    .addEventListener('click', function (e) { e.stopPropagation(); });
 
 
   /*
