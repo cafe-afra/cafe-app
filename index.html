@@ -2207,12 +2207,12 @@ const profitPos = s.profit >= 0;
 return (
 <div style={{marginBottom:14}}>
 <div className="row" style={{gap:8, marginBottom:8}}>
-{box('var(--sage-light)', 'var(--sage)', s.received, '💵 نقد دریافتی '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''))}
-{box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده')}
+{box('var(--sage-light)', 'var(--sage)', s.received, '💵 نقد دریافتی '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''), 'cash')}
+{box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده', 'credit')}
 </div>
 <div className="row" style={{gap:8, marginBottom:8}}>
-{box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه')}
-{box('#FBEAE6', 'var(--warn)', s.expense, 'هزینه '+period)}
+{box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه', 'total')}
+{box('#FBEAE6', 'var(--warn)', s.expense, 'هزینه '+period, null, 'expense')}
 </div>
 <div className="row" style={{gap:8}}>
 {box(profitPos ? 'var(--sage-light)' : '#FBEAE6', profitPos ? 'var(--sage)' : 'var(--warn)', s.profit, (profitPos ? '📈 سود خالص ' : '📉 زیان ')+period, 'نقد دریافتی − هزینه')}
