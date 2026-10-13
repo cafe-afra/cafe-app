@@ -2537,7 +2537,7 @@ onChange={(jy,jm,jd)=>setSelJalali({jy,jm,jd})} />
 {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
 </select>
 </div>
-{!viewLoading && <AccSummary s={daySummary} period="این روز" />}
+{!viewLoading && <AccSummary s={daySummary} period="این روز" onOpen={setListKind} />
 {viewLoading && <div className="loading">در حال بارگذاری...</div>}
 {!viewLoading && combined.length===0 && <div className="empty-state">تراکنشی برای این روز و فیلتر ثبت نشده</div>}
 {!viewLoading && combined.map(c=>(
@@ -2587,7 +2587,7 @@ onChange={(jy,jm)=>{ setMonthJalali({jy,jm}); setMonthData(null); }} />
 {monthLoading && !monthData && <div className="loading">در حال بارگذاری...</div>}
 {monthData && monthSummary && (
 <div style={{marginTop:14}}>
-<AccSummary s={monthSummary} period="این ماه" />
+<AccSummary s={monthSummary} period="این ماه" onOpen={setListKind} />
 <div className="section-title">📊 نمودار روزهای ماه</div>
 <div className="card"><AccDailyChart days={monthData.days} /></div>
 {expRows.length>0 && (<div>
