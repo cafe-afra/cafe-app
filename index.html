@@ -2156,7 +2156,7 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
 }
 
 // ---------------- ACCOUNTING TAB (حسابداری): expenses + income together, day/month filters, Jalali dates ----------------
-function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales, onRemoveSale}){
+  function AccountingTabOld({ingredients, onRestockIngredient, showToast, todaySales, onRemoveSale}){
   const [todayExpenses, setTodayExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formType, setFormType] = useState(null); // 'ingredient' | 'salary' | 'development'
