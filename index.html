@@ -2638,6 +2638,29 @@ onChange={(jy,jm)=>{ setMonthJalali({jy,jm}); setMonthData(null); }} />
 )}
 </div>
 )}
+  {listKind && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setListKind(null);}}>
+<div className="modal">
+<div className="modal-title">{listTitles[listKind]} ({fmt(listDocs.length)} مورد)</div>
+<div className="item-sub" style={{marginBottom:10}}>جمع: {fmt(listSum)} تومان</div>
+{listDocs.length===0 && <div className="empty-state">موردی وجود ندارد</div>}
+{listDocs.map(t=>(
+<div key={t.kind+(t.date||'')+t.id} className="card" style={t.kind==='income' ? {cursor:'pointer'} : null} onClick={()=>{ if(t.kind==='income') setViewEntry(t.raw); }}>
+<div className="card-top">
+<div>
+<div className="item-name">{t.label}</div>
+<div className="item-sub">{t.category} · {t.dateLabel ? (t.dateLabel+' · ') : ''}{t.time}</div>
+</div>
+<span className="oprice" style={{color: t.kind==='income' ? (t.raw.paid || t.raw.type==='settlement' ? 'var(--sage)' : '#9A6B14') : 'var(--warn)'}}>
+{t.kind==='income' ? '+' : '-'}{fmt(t.amount)}
+</span>
+</div>
+</div>
+))}
+<button className="btn btn-ghost btn-block" style={{marginTop:8}} onClick={()=>setListKind(null)}>بستن</button>
+</div>
+</div>
+)}
 {viewEntry && (()=>{
 const o = viewEntry;
 const its = o.items || [];
