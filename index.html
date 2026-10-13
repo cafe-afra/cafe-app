@@ -2290,6 +2290,7 @@ const [editEntry, setEditEntry] = useState(null);
 const [editNote, setEditNote] = useState('');
 const [editAmount, setEditAmount] = useState('');
 const [editCat, setEditCat] = useState('');
+const [listKind, setListKind] = useState(null);
 useEffect(()=>{
 const unsub = subscribeKey('expenses:'+todayKey(), (val)=>{
 setTodayExpenses(val ? JSON.parse(val) : []);
