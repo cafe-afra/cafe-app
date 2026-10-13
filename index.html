@@ -2156,6 +2156,604 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
 }
 
 // ---------------- ACCOUNTING TAB (حسابداری): expenses + income together, day/month filters, Jalali dates ----------------
+
+const ACC_EXP_BASE = ['خرید مواد اولیه','حقوق','هزینه توسعه کافه'];
+const ACC_EXP_EXTRA = ['اجاره','قبوض (برق/آب/گاز/اینترنت)','تعمیرات','بسته‌بندی','تبلیغات','حمل‌ونقل','متفرقه'];
+function accAmt(o){
+return o.total!==undefined ? (Number(o.total)||0) : (Number(o.price)||0)*(Number(o.qty)||0);
+}
+function accEn(s){
+return String(s||'').replace(/[۰-۹]/g, d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+}
+function accHour(t){
+const m = accEn(t).match(/(\d{1,2})\D+\d{1,2}/);
+if(!m) return null;
+const h = Number(m[1]);
+return (h>=0 && h<=23) ? h : null;
+}
+function accSummary(sales, expenses){
+let cashSales=0, creditSales=0, settle=0;
+sales.forEach(o=>{
+const a = accAmt(o);
+if(o.type==='settlement') settle += a;
+else if(o.paid) cashSales += a;
+else creditSales += a;
+});
+const expense = expenses.filter(e=>e.type!=='cashclose').reduce((s,e)=>s+(Number(e.amount)||0),0);
+const received = cashSales + settle;
+return {cashSales, creditSales, settle, totalSales: cashSales+creditSales, received, expense, profit: received-expense};
+}
+function accSaleCategory(o){
+if(o.type==='settlement') return 'تسویه بدهی';
+return o.paid ? 'فروش نقد' : 'فروش نسیه';
+}
+function accSaleLabel(o){
+if(o.type==='settlement') return o.name;
+return (o.paid ? 'فروش نقد' : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
+}
+function AccSummary({s, period}){
+function box(bg, color, amount, label, sub){
+return (
+<div className="report-total" style={{flex:1, background:bg, padding:12}}>
+<div className="amount" style={{fontSize:18, color}}>{fmt(amount)}</div>
+<div className="label">{label}</div>
+{sub ? <div className="item-sub" style={{fontSize:11, marginTop:3}}>{sub}</div> : null}
+</div>
+);
+}
+const profitPos = s.profit >= 0;
+return (
+<div style={{marginBottom:14}}>
+<div className="row" style={{gap:8, marginBottom:8}}>
+{box('var(--sage-light)', 'var(--sage)', s.received, '💵 نقد دریافتی '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''))}
+{box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده')}
+</div>
+<div className="row" style={{gap:8, marginBottom:8}}>
+{box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه')}
+{box('#FBEAE6', 'var(--warn)', s.expense, 'هزینه '+period)}
+</div>
+<div className="row" style={{gap:8}}>
+{box(profitPos ? 'var(--sage-light)' : '#FBEAE6', profitPos ? 'var(--sage)' : 'var(--warn)', s.profit, (profitPos ? '📈 سود خالص ' : '📉 زیان ')+period, 'نقد دریافتی − هزینه')}
+</div>
+</div>
+);
+}
+function AccDailyChart({days}){
+const n = days.length;
+if(!n) return null;
+const W = 340, H = 120, padB = 16;
+const slot = W / n;
+const bw = Math.max(1.5, slot*0.38);
+const maxV = Math.max(1, ...days.map(d=>Math.max(d.received, d.expense)));
+const plotH = H - padB;
+return (
+<div style={{marginTop:8}}>
+<svg viewBox={'0 0 '+W+' '+H} style={{width:'100%', height:'auto', display:'block'}}>
+{days.map((d,i)=>{
+const cx = W - (i+0.5)*slot;
+const h1 = (d.received/maxV)*plotH;
+const h2 = (d.expense/maxV)*plotH;
+return (
+<g key={d.d}>
+<rect x={cx-bw-0.3} y={plotH-h1} width={bw} height={h1} fill="#5C7A5C" rx="1" />
+<rect x={cx+0.3} y={plotH-h2} width={bw} height={h2} fill="#B5533C" rx="1" />
+{(d.d===1 || d.d%5===0) && <text x={cx} y={H-3} fontSize="8" textAnchor="middle" fill="#8a7d6c">{d.d}</text>}
+</g>
+);
+})}
+<line x1="0" y1={plotH} x2={W} y2={plotH} stroke="#d9cfbd" strokeWidth="0.6" />
+</svg>
+<div className="item-sub" style={{display:'flex', gap:14, justifyContent:'center', fontSize:11}}>
+<span><span style={{display:'inline-block', width:9, height:9, background:'#5C7A5C', borderRadius:2, marginLeft:4}}></span>نقد دریافتی</span>
+<span><span style={{display:'inline-block', width:9, height:9, background:'#B5533C', borderRadius:2, marginLeft:4}}></span>هزینه</span>
+</div>
+</div>
+);
+}
+function AccBars({rows, color}){
+const max = Math.max(1, ...rows.map(r=>r.value));
+return (
+<div>
+{rows.map((r,i)=>(
+<div key={r.label+i} style={{marginBottom:9}}>
+<div className="card-top" style={{marginBottom:3}}>
+<div className="item-name" style={{fontSize:13}}>{r.label}</div>
+<span className="item-sub">{r.sub}</span>
+</div>
+<div style={{background:'#EFE8DA', borderRadius:6, height:8, overflow:'hidden'}}>
+<div style={{width:Math.max(2,(r.value/max)*100)+'%', height:'100%', background:color || 'var(--sage)', borderRadius:6}}></div>
+</div>
+</div>
+))}
+</div>
+);
+}
+function AccountingTab({ingredients, onRestockIngredient, showToast, todaySales, onRemoveSale}){
+const [todayExpenses, setTodayExpenses] = useState([]);
+const [loading, setLoading] = useState(true);
+const [formType, setFormType] = useState(null);
+const [ingId, setIngId] = useState('');
+const [ingQty, setIngQty] = useState('');
+const [ingPrice, setIngPrice] = useState('');
+const [salaryName, setSalaryName] = useState('');
+const [salaryAmount, setSalaryAmount] = useState('');
+const [salaryNote, setSalaryNote] = useState('');
+const [devDesc, setDevDesc] = useState('');
+const [devAmount, setDevAmount] = useState('');
+const [otherCat, setOtherCat] = useState(ACC_EXP_EXTRA[0]);
+const [otherCustom, setOtherCustom] = useState('');
+const [otherDesc, setOtherDesc] = useState('');
+const [otherAmount, setOtherAmount] = useState('');
+const [editEntry, setEditEntry] = useState(null);
+const [editNote, setEditNote] = useState('');
+const [editAmount, setEditAmount] = useState('');
+const [editCat, setEditCat] = useState('');
+useEffect(()=>{
+const unsub = subscribeKey('expenses:'+todayKey(), (val)=>{
+setTodayExpenses(val ? JSON.parse(val) : []);
+setLoading(false);
+});
+return () => unsub();
+}, []);
+const tj = todayJalali();
+const [selJalali, setSelJalali] = useState(tj);
+const [filterType, setFilterType] = useState('all');
+const [categoryFilter, setCategoryFilter] = useState('');
+const [monthMode, setMonthMode] = useState(false);
+const [monthJalali, setMonthJalali] = useState(tj);
+const [monthData, setMonthData] = useState(null);
+const [monthLoading, setMonthLoading] = useState(false);
+const monthReq = useRef(0);
+const [viewExpenses, setViewExpenses] = useState([]);
+const [viewSales, setViewSales] = useState([]);
+const [viewLoading, setViewLoading] = useState(true);
+const [viewEntry, setViewEntry] = useState(null);
+const selGregKey = jalaliToGregorianKey(selJalali.jy, selJalali.jm, selJalali.jd) || todayKey();
+const isSelToday = selGregKey === todayKey();
+useEffect(()=>{
+if(isSelToday){
+setViewExpenses(todayExpenses);
+setViewSales(todaySales || []);
+setViewLoading(false);
+return;
+}
+let cancelled = false;
+setViewLoading(true);
+(async ()=>{
+const [expRaw, salesRaw] = await Promise.all([storageGet('expenses:'+selGregKey), storageGet('sales:'+selGregKey)]);
+if(cancelled) return;
+setViewExpenses(expRaw ? JSON.parse(expRaw) : []);
+setViewSales(salesRaw ? JSON.parse(salesRaw) : []);
+setViewLoading(false);
+})();
+return ()=>{ cancelled = true; };
+}, [selGregKey, isSelToday, todayExpenses, todaySales]);
+async function saveExpensesFor(gk, next){
+if(gk === todayKey()) setTodayExpenses(next);
+else setViewExpenses(next);
+await storageSet('expenses:'+gk, JSON.stringify(next));
+}
+function persistToday(next){ return saveExpensesFor(todayKey(), next); }
+function addIngredientExpense(){
+const ing = ingredients.find(i=>i.id===ingId);
+const qty = Number(ingQty), price = Number(ingPrice);
+if(!ing){ showToast('یه ماده انتخاب کن'); return; }
+if(!qty || qty<=0){ showToast('مقدار خرید رو درست وارد کن'); return; }
+if(!price || price<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+onRestockIngredient(ing.id, qty, price);
+const entry = {id:uid(), type:'ingredient', category:'خرید مواد اولیه', note:`${ing.name} — ${fmt(qty)} ${ing.unit}`, amount:price, time: nowFaTime()};
+persistToday([...todayExpenses, entry]);
+setIngId(''); setIngQty(''); setIngPrice(''); setFormType(null);
+showToast('✅ خرید ثبت شد و به انبار اضافه شد');
+}
+function addSalaryExpense(){
+const amount = Number(salaryAmount);
+if(!salaryName.trim()){ showToast('اسم نیرو رو بنویس'); return; }
+if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+const entry = {id:uid(), type:'salary', category:'حقوق', note: salaryName.trim() + (salaryNote.trim()?(' — '+salaryNote.trim()):''), amount, time: nowFaTime()};
+persistToday([...todayExpenses, entry]);
+setSalaryName(''); setSalaryAmount(''); setSalaryNote(''); setFormType(null);
+showToast('✅ حقوق ثبت شد');
+}
+function addDevExpense(){
+const amount = Number(devAmount);
+if(!devDesc.trim()){ showToast('توضیح هزینه رو بنویس'); return; }
+if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+const entry = {id:uid(), type:'development', category:'هزینه توسعه کافه', note: devDesc.trim(), amount, time: nowFaTime()};
+persistToday([...todayExpenses, entry]);
+setDevDesc(''); setDevAmount(''); setFormType(null);
+showToast('✅ هزینه ثبت شد');
+}
+function addOtherExpense(){
+const amount = Number(otherAmount);
+const cat = otherCat==='__new' ? otherCustom.trim() : otherCat;
+if(!cat){ showToast('اسم دسته رو بنویس'); return; }
+if(!otherDesc.trim()){ showToast('توضیح هزینه رو بنویس'); return; }
+if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+const entry = {id:uid(), type:'other', category:cat, note: otherDesc.trim(), amount, time: nowFaTime()};
+persistToday([...todayExpenses, entry]);
+setOtherDesc(''); setOtherAmount(''); setOtherCustom(''); setFormType(null);
+showToast('✅ هزینه ثبت شد');
+}
+function removeExpenseToday(entry){
+if(!window.confirm('این هزینه حذف بشه؟')) return;
+persistToday(todayExpenses.filter(e=>e.id!==entry.id));
+}
+function openEdit(raw){
+setEditEntry(raw);
+setEditNote(raw.note || '');
+setEditAmount(String(raw.amount));
+setEditCat(raw.category || 'متفرقه');
+}
+function saveEdit(){
+const amount = Number(editAmount);
+if(!editNote.trim()){ showToast('توضیح هزینه رو بنویس'); return; }
+if(!amount || amount<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+const base = isSelToday ? todayExpenses : viewExpenses;
+const next = base.map(e=> e.id===editEntry.id ? {...e, note:editNote.trim(), amount, category:editCat} : e);
+saveExpensesFor(selGregKey, next);
+setEditEntry(null);
+showToast('✅ هزینه ویرایش شد');
+}
+const realViewExpenses = viewExpenses.filter(e=>e.type!=='cashclose');
+const daySummary = accSummary(viewSales, viewExpenses);
+const customCats = [];
+[...viewExpenses, ...(monthData ? monthData.days.flatMap(d=>d.expenses) : [])].forEach(e=>{
+if(e.type==='cashclose') return;
+if(e.category && !ACC_EXP_BASE.includes(e.category) && !ACC_EXP_EXTRA.includes(e.category) && !customCats.includes(e.category)) customCats.push(e.category);
+});
+const expenseCategories = [...ACC_EXP_BASE, ...ACC_EXP_EXTRA, ...customCats];
+const incomeCategories = ['فروش نقد','فروش نسیه','تسویه بدهی'];
+const allCategories = filterType==='expense' ? expenseCategories : filterType==='income' ? incomeCategories : [...expenseCategories, ...incomeCategories];
+const combined = [];
+if(filterType!=='income'){
+realViewExpenses.forEach(e=>{
+if(categoryFilter && e.category!==categoryFilter) return;
+combined.push({kind:'expense', id:e.id, time:e.time, label:e.note, category:e.category, amount:Number(e.amount)||0, raw:e});
+});
+}
+if(filterType!=='expense'){
+viewSales.forEach(o=>{
+const cat = accSaleCategory(o);
+if(categoryFilter && cat!==categoryFilter) return;
+combined.push({kind:'income', id:o.id, time:o.time, label:accSaleLabel(o), category:cat, amount:accAmt(o), raw:o});
+});
+}
+combined.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+async function openMonthReport(){
+const req = ++monthReq.current;
+setMonthLoading(true);
+const len = jalaliMonthLength(monthJalali.jy, monthJalali.jm);
+const monthName = JALALI_MONTH_NAMES[monthJalali.jm-1];
+const dayList = [];
+for(let d=1; d<=len; d++){
+const gk = jalaliToGregorianKey(monthJalali.jy, monthJalali.jm, d);
+if(gk) dayList.push({d, gk});
+}
+try{
+const results = await Promise.all(dayList.map(async ({d, gk})=>{
+const [expRaw, salesRaw] = await Promise.all([storageGet('expenses:'+gk), storageGet('sales:'+gk)]);
+return {d, gk, expenses: expRaw ? JSON.parse(expRaw) : [], sales: salesRaw ? JSON.parse(salesRaw) : []};
+}));
+if(req !== monthReq.current) return;
+const days = results.map(r=>{
+const s = accSummary(r.sales, r.expenses);
+return {...r, received:s.received, expense:s.expense};
+});
+const transactions = [];
+days.forEach(({d, gk, expenses, sales})=>{
+const dateLabel = d+' '+monthName;
+expenses.forEach(e=>{
+if(e.type==='cashclose') return;
+transactions.push({kind:'expense', id:e.id, date:gk, dateLabel, time:e.time||'', label:e.note, category:e.category, amount:Number(e.amount)||0, raw:e});
+});
+sales.forEach(o=>{
+transactions.push({kind:'income', id:o.id, date:gk, dateLabel, time:o.time||'', label:accSaleLabel(o), category:accSaleCategory(o), amount:accAmt(o), raw:o});
+});
+});
+transactions.sort((a,b)=> (a.date+' '+a.time).localeCompare(b.date+' '+b.time));
+setMonthData({days, transactions});
+}catch(e){
+console.error('month report failed', e);
+if(req !== monthReq.current) return;
+showToast('⚠️ خطا در خواندن گزارش ماهانه');
+setMonthData({days:[], transactions:[]});
+}
+if(req === monthReq.current) setMonthLoading(false);
+}
+useEffect(()=>{
+if(monthMode && !monthData) openMonthReport();
+}, [monthMode, monthJalali.jy, monthJalali.jm]);
+const monthFiltered = monthData ? monthData.transactions.filter(t=>{
+if(filterType==='income' && t.kind!=='income') return false;
+if(filterType==='expense' && t.kind!=='expense') return false;
+if(categoryFilter && t.category!==categoryFilter) return false;
+return true;
+}) : [];
+let monthSummary = null, expRows = [], itemRows = [], slowRows = [], hourRows = [];
+if(monthData){
+const allSales = monthData.days.flatMap(d=>d.sales);
+const allExp = monthData.days.flatMap(d=>d.expenses);
+monthSummary = accSummary(allSales, allExp);
+const byCat = {};
+allExp.filter(e=>e.type!=='cashclose').forEach(e=>{ const k = e.category || 'متفرقه'; byCat[k] = (byCat[k]||0) + (Number(e.amount)||0); });
+const totalExp = Object.values(byCat).reduce((a,b)=>a+b,0);
+expRows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k, value:v, sub: fmt(v)+' ('+fmt(Math.round(totalExp? v*100/totalExp : 0))+'٪)'}));
+const items = {};
+const hours = {};
+allSales.forEach(o=>{
+if(o.type==='settlement') return;
+(o.items||[]).forEach(it=>{
+const k = it.name || 'بدون نام';
+if(!items[k]) items[k] = {qty:0, amount:0};
+items[k].qty += Number(it.qty)||0;
+items[k].amount += (Number(it.price)||0)*(Number(it.qty)||0);
+});
+const h = accHour(o.time);
+if(h!==null) hours[h] = (hours[h]||0) + 1;
+});
+const itemList = Object.entries(items).sort((a,b)=> b[1].qty - a[1].qty || b[1].amount - a[1].amount);
+itemRows = itemList.slice(0,10).map(([k,v])=>({label:k, value:v.qty, sub: fmt(v.qty)+' عدد · '+fmt(v.amount)}));
+if(itemList.length > 10){
+slowRows = itemList.slice(-5).reverse().map(([k,v])=>({label:k, value:v.qty, sub: fmt(v.qty)+' عدد · '+fmt(v.amount)}));
+}
+hourRows = Object.entries(hours).sort((a,b)=>Number(a[0])-Number(b[0])).map(([h,c])=>({label:'ساعت '+fmt(h), value:c, sub: fmt(c)+' سفارش'}));
+}
+if(loading){
+return <div className="loading">در حال بارگذاری...</div>;
+}
+const todayTotal = todayExpenses.filter(e=>e.type!=='cashclose').reduce((s,e)=>s+(Number(e.amount)||0),0);
+return (
+<div>
+<div className="section-title">ثبت هزینه جدید (امروز)</div>
+<div className="row" style={{marginBottom:10, flexWrap:'wrap', gap:8}}>
+<button className="btn btn-small btn-sage" onClick={()=>setFormType('ingredient')}>+ خرید مواد اولیه</button>
+<button className="btn btn-small btn-sage" onClick={()=>setFormType('salary')}>+ حقوق</button>
+<button className="btn btn-small btn-sage" onClick={()=>setFormType('development')}>+ توسعه کافه</button>
+<button className="btn btn-small btn-sage" onClick={()=>setFormType('other')}>+ هزینه‌ی دیگر</button>
+</div>
+<div className="item-sub" style={{marginBottom:20}}>جمع هزینه‌های امروز: {fmt(todayTotal)} تومان</div>
+<div className="section-title">حسابداری — درآمد و هزینه</div>
+<div className="row" style={{marginBottom:12}}>
+<button className={"btn btn-small " + (!monthMode?"btn-sage":"btn-ghost")} onClick={()=>setMonthMode(false)}>دید روزانه</button>
+<button className={"btn btn-small " + (monthMode?"btn-sage":"btn-ghost")} onClick={()=>setMonthMode(true)}>دید ماهانه</button>
+</div>
+{!monthMode && (
+<div>
+<JalaliDatePicker jy={selJalali.jy} jm={selJalali.jm} jd={selJalali.jd}
+onChange={(jy,jm,jd)=>setSelJalali({jy,jm,jd})} />
+<div style={{height:10}}></div>
+<div className="row" style={{gap:8, marginBottom:12}}>
+<select value={filterType} onChange={e=>{setFilterType(e.target.value); setCategoryFilter('');}}>
+<option value="all">همه تراکنش‌ها</option>
+<option value="income">فقط درآمد</option>
+<option value="expense">فقط هزینه</option>
+</select>
+<select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}>
+<option value="">همه دسته‌ها</option>
+{allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+</select>
+</div>
+{!viewLoading && <AccSummary s={daySummary} period="این روز" />}
+{viewLoading && <div className="loading">در حال بارگذاری...</div>}
+{!viewLoading && combined.length===0 && <div className="empty-state">تراکنشی برای این روز و فیلتر ثبت نشده</div>}
+{!viewLoading && combined.map(c=>(
+<div key={c.kind+c.id} className="card" style={c.kind==='income' ? {cursor:'pointer'} : null} onClick={()=>{ if(c.kind==='income') setViewEntry(c.raw); }}>
+<div className="card-top">
+<div>
+<div className="item-name">{c.label}</div>
+<div className="item-sub">{c.category} · {c.time}</div>
+</div>
+<span className="oprice" style={{color: c.kind==='income' ? (c.raw.paid || c.raw.type==='settlement' ? 'var(--sage)' : '#9A6B14') : 'var(--warn)'}}>
+{c.kind==='income' ? '+' : '-'}{fmt(c.amount)}
+</span>
+</div>
+{c.kind==='expense' && (
+<div className="row" style={{gap:8, marginTop:8}}>
+<button className="btn btn-small btn-ghost" onClick={(e)=>{ e.stopPropagation(); openEdit(c.raw); }}>ویرایش</button>
+{isSelToday && <button className="btn btn-small btn-danger" onClick={(e)=>{ e.stopPropagation(); removeExpenseToday(c.raw); }}>حذف</button>}
+</div>
+)}
+{c.kind==='income' && isSelToday && (
+<button className="btn btn-small btn-danger" style={{marginTop:8}}
+onClick={(e)=>{ e.stopPropagation(); onRemoveSale(c.raw); }}>حذف</button>
+)}
+</div>
+))}
+</div>
+)}
+{monthMode && (
+<div>
+<JalaliMonthPicker jy={monthJalali.jy} jm={monthJalali.jm}
+onChange={(jy,jm)=>{ setMonthJalali({jy,jm}); setMonthData(null); }} />
+<div style={{height:10}}></div>
+<div className="row" style={{gap:8, marginBottom:12}}>
+<select value={filterType} onChange={e=>{setFilterType(e.target.value); setCategoryFilter('');}}>
+<option value="all">همه تراکنش‌ها</option>
+<option value="income">فقط درآمد</option>
+<option value="expense">فقط هزینه</option>
+</select>
+<select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}>
+<option value="">همه دسته‌ها</option>
+{allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+</select>
+</div>
+<button className="btn btn-sage btn-block" onClick={openMonthReport} disabled={monthLoading}>
+{monthLoading ? 'در حال محاسبه...' : 'به‌روزرسانی گزارش ماهانه'}
+</button>
+{monthLoading && !monthData && <div className="loading">در حال بارگذاری...</div>}
+{monthData && monthSummary && (
+<div style={{marginTop:14}}>
+<AccSummary s={monthSummary} period="این ماه" />
+<div className="section-title">📊 نمودار روزهای ماه</div>
+<div className="card"><AccDailyChart days={monthData.days} /></div>
+{expRows.length>0 && (<div>
+<div className="section-title" style={{marginTop:16}}>🥧 هزینه‌ها به تفکیک دسته</div>
+<div className="card"><AccBars rows={expRows} color="var(--warn)" /></div>
+</div>)}
+{itemRows.length>0 && (<div>
+<div className="section-title" style={{marginTop:16}}>🏆 پرفروش‌ترین‌ها</div>
+<div className="card"><AccBars rows={itemRows} color="var(--sage)" /></div>
+</div>)}
+{slowRows.length>0 && (<div>
+<div className="section-title" style={{marginTop:16}}>🐢 کم‌فروش‌ترین‌ها</div>
+<div className="card"><AccBars rows={slowRows} color="#9A6B14" /></div>
+</div>)}
+{hourRows.length>0 && (<div>
+<div className="section-title" style={{marginTop:16}}>⏰ ساعت‌های شلوغ</div>
+<div className="card"><AccBars rows={hourRows} color="var(--accent)" /></div>
+</div>)}
+<div className="section-title" style={{marginTop:16}}>تراکنش‌های این ماه</div>
+{monthFiltered.length===0 && <div className="empty-state">تراکنشی با این فیلتر وجود ندارد</div>}
+{monthFiltered.map(t=>(
+<div key={t.kind+t.date+t.id} className="card" style={t.kind==='income' ? {cursor:'pointer'} : null} onClick={()=>{ if(t.kind==='income') setViewEntry(t.raw); }}>
+<div className="card-top">
+<div>
+<div className="item-name">{t.label}</div>
+<div className="item-sub">{t.category} · {t.dateLabel} · {t.time}</div>
+</div>
+<span className="oprice" style={{color: t.kind==='income' ? (t.raw.paid || t.raw.type==='settlement' ? 'var(--sage)' : '#9A6B14') : 'var(--warn)'}}>
+{t.kind==='income' ? '+' : '-'}{fmt(t.amount)}
+</span>
+</div>
+</div>
+))}
+</div>
+)}
+</div>
+)}
+{viewEntry && (()=>{
+const o = viewEntry;
+const its = o.items || [];
+const sub = o.subtotal!==undefined ? o.subtotal : its.reduce((x,it)=>x+it.price*it.qty,0);
+const dp = Number(o.discountPercent)||0;
+const da = o.discountAmount!==undefined ? o.discountAmount : Math.round(sub*dp/100);
+const tot = o.total!==undefined ? o.total : sub-da;
+return (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setViewEntry(null);}}>
+<div className="modal">
+<div className="modal-title">🧾 فاکتور — {o.time}</div>
+<div className="item-sub" style={{marginBottom:10}}>
+{o.type==='settlement' ? 'دریافت تسویه' : (o.paid ? 'نقدی' : 'نسیه')}
+{o.debtorName ? ' · ' + o.debtorName : ''}
+</div>
+{o.type==='settlement' && <div className="item-name">{o.name}</div>}
+{its.map((it,i)=>(
+<div key={i} className="card-top" style={{padding:'6px 0', borderBottom:'1px solid var(--border, #eee)'}}>
+<div className="item-name">{it.name} × {it.qty}</div>
+<span className="oprice">{fmt(it.price*it.qty)}</span>
+</div>
+))}
+{o.type!=='settlement' && (
+<div style={{marginTop:10}}>
+{dp>0 && <div className="card-top"><div className="item-sub">جمع</div><span>{fmt(sub)}</span></div>}
+{dp>0 && <div className="card-top"><div className="item-sub">تخفیف {dp}٪</div><span>-{fmt(da)}</span></div>}
+</div>
+)}
+<div className="card-top" style={{marginTop:8}}>
+<div className="item-name">مبلغ نهایی</div>
+<span className="oprice" style={{color:'var(--sage)'}}>{fmt(tot)}</span>
+</div>
+<button className="btn" style={{marginTop:14, width:'100%'}} onClick={()=>setViewEntry(null)}>بستن</button>
+</div>
+</div>
+);
+})()}
+{editEntry && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setEditEntry(null);}}>
+<div className="modal">
+<div className="modal-title">ویرایش هزینه</div>
+{editEntry.type==='ingredient' && <div className="item-sub" style={{marginBottom:8}}>توجه: ویرایش مبلغ فقط حسابداری رو عوض می‌کنه و موجودی انبار تغییر نمی‌کنه.</div>}
+<label>توضیح</label>
+<input type="text" value={editNote} onChange={e=>setEditNote(e.target.value)} />
+<label>مبلغ (تومان)</label>
+<input type="number" value={editAmount} onChange={e=>setEditAmount(e.target.value)} />
+<label>دسته</label>
+<select value={editCat} onChange={e=>setEditCat(e.target.value)}>
+{(expenseCategories.includes(editCat) ? expenseCategories : [...expenseCategories, editCat]).map(c=><option key={c} value={c}>{c}</option>)}
+</select>
+<button className="btn btn-primary" onClick={saveEdit}>ذخیره</button>
+<div style={{height:8}}></div>
+<button className="btn btn-ghost btn-block" onClick={()=>setEditEntry(null)}>انصراف</button>
+</div>
+</div>
+)}
+{formType==='ingredient' && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+<div className="modal">
+<div className="modal-title">خرید مواد اولیه</div>
+<label>کدوم ماده؟</label>
+<select value={ingId} onChange={e=>setIngId(e.target.value)}>
+<option value="">انتخاب کن</option>
+{ingredients.map(ing=><option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>)}
+</select>
+<label>چقدر خریدی؟</label>
+<input type="number" value={ingQty} onChange={e=>setIngQty(e.target.value)} placeholder="مقدار" />
+<label>کلاً چقدر پول دادی؟ (تومان)</label>
+<input type="number" value={ingPrice} onChange={e=>setIngPrice(e.target.value)} placeholder="مبلغ" />
+<button className="btn btn-primary" onClick={addIngredientExpense}>ثبت خرید</button>
+<div style={{height:8}}></div>
+<button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+</div>
+</div>
+)}
+{formType==='salary' && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+<div className="modal">
+<div className="modal-title">پرداخت حقوق</div>
+<label>اسم نیرو</label>
+<input type="text" value={salaryName} onChange={e=>setSalaryName(e.target.value)} placeholder="مثلاً مجتبی" />
+<label>مبلغ (تومان)</label>
+<input type="number" value={salaryAmount} onChange={e=>setSalaryAmount(e.target.value)} placeholder="مبلغ" />
+<label>توضیح (اختیاری)</label>
+<input type="text" value={salaryNote} onChange={e=>setSalaryNote(e.target.value)} placeholder="مثلاً حقوق مرداد" />
+<button className="btn btn-primary" onClick={addSalaryExpense}>ثبت</button>
+<div style={{height:8}}></div>
+<button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+</div>
+</div>
+)}
+{formType==='development' && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+<div className="modal">
+<div className="modal-title">هزینه توسعه کافه</div>
+<label>بابت چی بود؟</label>
+<input type="text" value={devDesc} onChange={e=>setDevDesc(e.target.value)} placeholder="مثلاً تعمیر اسپرسوساز" />
+<label>مبلغ (تومان)</label>
+<input type="number" value={devAmount} onChange={e=>setDevAmount(e.target.value)} placeholder="مبلغ" />
+<button className="btn btn-primary" onClick={addDevExpense}>ثبت</button>
+<div style={{height:8}}></div>
+<button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+</div>
+</div>
+)}
+{formType==='other' && (
+<div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setFormType(null);}}>
+<div className="modal">
+<div className="modal-title">هزینه‌ی دیگر</div>
+<label>دسته</label>
+<select value={otherCat} onChange={e=>setOtherCat(e.target.value)}>
+{[...ACC_EXP_EXTRA, ...customCats].map(c=><option key={c} value={c}>{c}</option>)}
+<option value="__new">+ دسته‌ی جدید...</option>
+</select>
+{otherCat==='__new' && (<div>
+<label>اسم دسته‌ی جدید</label>
+<input type="text" value={otherCustom} onChange={e=>setOtherCustom(e.target.value)} placeholder="مثلاً ظروف یکبارمصرف" />
+</div>)}
+<label>بابت چی بود؟</label>
+<input type="text" value={otherDesc} onChange={e=>setOtherDesc(e.target.value)} placeholder="مثلاً قبض برق مهر" />
+<label>مبلغ (تومان)</label>
+<input type="number" value={otherAmount} onChange={e=>setOtherAmount(e.target.value)} placeholder="مبلغ" />
+<button className="btn btn-primary" onClick={addOtherExpense}>ثبت</button>
+<div style={{height:8}}></div>
+<button className="btn btn-ghost btn-block" onClick={()=>setFormType(null)}>انصراف</button>
+</div>
+</div>
+)}
+</div>
+);
+}
+  
   function AccountingTabOld({ingredients, onRestockIngredient, showToast, todaySales, onRemoveSale}){
   const [todayExpenses, setTodayExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
