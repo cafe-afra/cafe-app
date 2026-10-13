@@ -2199,6 +2199,7 @@ return (
 <div className="amount" style={{fontSize:18, color}}>{fmt(amount)}</div>
 <div className="label">{label}</div>
 {sub ? <div className="item-sub" style={{fontSize:11, marginTop:3}}>{sub}</div> : null}
+  {clickable ? <div className="item-sub" style={{fontSize:10, marginTop:4, color:'var(--accent)'}}>مشاهده لیست ◂</div> : null}
 </div>
 );
 }
