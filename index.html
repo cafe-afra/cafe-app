@@ -2191,10 +2191,11 @@ function accSaleLabel(o){
 if(o.type==='settlement') return o.name;
 return (o.paid ? 'فروش نقد' : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
 }
-function AccSummary({s, period}){
-function box(bg, color, amount, label, sub){
+function AccSummary({s, period, onOpen}){
+function box(bg, color, amount, label, sub, kind){
+const clickable = !!(kind && onOpen);
 return (
-<div className="report-total" style={{flex:1, background:bg, padding:12}}>
+<div className="report-total" style={{flex:1, background:bg, padding:12, cursor: clickable ? 'pointer' : 'default'}} onClick={()=>{ if(clickable) onOpen(kind); }}>
 <div className="amount" style={{fontSize:18, color}}>{fmt(amount)}</div>
 <div className="label">{label}</div>
 {sub ? <div className="item-sub" style={{fontSize:11, marginTop:3}}>{sub}</div> : null}
