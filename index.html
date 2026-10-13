@@ -2550,7 +2550,7 @@ onChange={(jy,jm,jd)=>setSelJalali({jy,jm,jd})} />
 {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
 </select>
 </div>
-{!viewLoading && <AccSummary s={daySummary} period="این روز" onOpen={setListKind} />
+{!viewLoading && <AccSummary s={daySummary} period="این روز" onOpen={setListKind} />}
 {viewLoading && <div className="loading">در حال بارگذاری...</div>}
 {!viewLoading && combined.length===0 && <div className="empty-state">تراکنشی برای این روز و فیلتر ثبت نشده</div>}
 {!viewLoading && combined.map(c=>(
