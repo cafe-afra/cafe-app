@@ -2505,6 +2505,19 @@ hourRows = Object.entries(hours).sort((a,b)=>Number(a[0])-Number(b[0])).map(([h,
 if(loading){
 return <div className="loading">در حال بارگذاری...</div>;
 }
+  const docSource = monthMode ? (monthData ? monthData.transactions : []) : [
+...realViewExpenses.map(e=>({kind:'expense', id:e.id, time:e.time||'', dateLabel:'', label:e.note, category:e.category, amount:Number(e.amount)||0, raw:e})),
+...viewSales.map(o=>({kind:'income', id:o.id, time:o.time||'', dateLabel:'', label:accSaleLabel(o), category:accSaleCategory(o), amount:accAmt(o), raw:o}))
+].sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+const listDocs = !listKind ? [] : docSource.filter(t=>{
+if(listKind==='expense') return t.kind==='expense';
+if(t.kind!=='income') return false;
+if(listKind==='cash') return t.raw.type==='settlement' || !!t.raw.paid;
+if(listKind==='credit') return t.raw.type!=='settlement' && !t.raw.paid;
+return t.raw.type!=='settlement';
+});
+const listTitles = {cash:'💵 نقد دریافتی', credit:'🕓 فاکتورهای نسیه', total:'🧾 همه‌ی فاکتورهای فروش', expense:'هزینه‌ها'};
+const listSum = listDocs.reduce((a,t)=>a+t.amount,0);
 const todayTotal = todayExpenses.filter(e=>e.type!=='cashclose').reduce((s,e)=>s+(Number(e.amount)||0),0);
 return (
 <div>
