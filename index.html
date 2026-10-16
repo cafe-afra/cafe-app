@@ -2146,6 +2146,22 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
         </div>
       )}
 
+      {addingDebt && (
+        <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setAddingDebt(null);}}>
+          <div className="modal">
+            <div className="modal-title">افزودن بدهی به {addingDebt.name}</div>
+            <div className="item-sub" style={{marginBottom:10}}>بدهی فعلی: {fmt(addingDebt.balance)} تومان. این مبلغ فقط به بدهی اضافه می‌شه و سفارش یا فروشی ثبت نمی‌شه.</div>
+            <label>مبلغی که اضافه بشه (تومان)</label>
+            <input type="number" value={debtAmount} onChange={e=>setDebtAmount(e.target.value)} placeholder="مبلغ" autoFocus />
+            <label>توضیح (اختیاری)</label>
+            <input type="text" value={debtNote} onChange={e=>setDebtNote(e.target.value)} placeholder="مثلاً بدهی قبل از اپ" />
+            {debtAmount!=='' && Number(debtAmount)>0 && <div className="item-sub" style={{margin:'6px 0 10px'}}>بدهی جدید: {fmt((Number(addingDebt.balance)||0)+Number(debtAmount))} تومان</div>}
+            <button className="btn btn-primary" onClick={confirmAddDebt}>ثبت</button>
+            <div style={{height:8}}></div>
+            <button className="btn btn-ghost btn-block" onClick={()=>setAddingDebt(null)}>انصراف</button>
+          </div>
+        </div>
+      )}
       {settling && (
         <div className="modal-overlay" onClick={(e)=>{if(e.target===e.currentTarget) setSettling(null);}}>
           <div className="modal">
