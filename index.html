@@ -2111,6 +2111,7 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
           </div>
           <div className="row" style={{marginTop:8}}>
             {d.balance>0 && <button className="btn btn-small btn-sage" onClick={()=>openSettle(d)}>ثبت دریافت</button>}
+            <button className="btn btn-small btn-ghost" onClick={()=>{setAddingDebt(d); setDebtAmount(''); setDebtNote('');}}>+ افزودن بدهی</button>
             {d.tabItems && d.tabItems.length>0 && (
               <button className="btn btn-small btn-ghost" onClick={()=>setExpanded(expanded===d.id?null:d.id)}>
                 {expanded===d.id ? 'بستن ریز سفارش‌ها' : 'ریز سفارش‌ها'}
