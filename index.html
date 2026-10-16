@@ -2041,6 +2041,9 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
   const [settling, setSettling] = useState(null);
   const [amount, setAmount] = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [addingDebt, setAddingDebt] = useState(null);
+  const [debtAmount, setDebtAmount] = useState('');
+  const [debtNote, setDebtNote] = useState('');
 
   const totalOwed = debtors.reduce((s,d)=>s+d.balance,0);
 
