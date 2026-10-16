@@ -2065,6 +2065,18 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
     setSettling(d);
     setAmount(String(d.balance));
   }
+  function confirmAddDebt(){
+    const amt = Number(debtAmount);
+    if(!amt || amt<=0){ showToast('مبلغ رو درست وارد کن'); return; }
+    const entry = {date: todayFaLabel(), time: nowFaTime(), items:[{name: debtNote.trim() || 'بدهی قبلی (ثبت دستی)', price:amt, qty:1}], total:amt, manual:true};
+    onSave(debtors.map(x=>{
+      if(x.id!==addingDebt.id) return x;
+      const oldTabs = (x.balance>0 ? (x.tabItems||[]) : []);
+      return {...x, balance: Math.round(((Number(x.balance)||0)+amt)*10)/10, tabItems:[...oldTabs, entry]};
+    }));
+    showToast('✅ بدهی به '+addingDebt.name+' اضافه شد');
+    setAddingDebt(null); setDebtAmount(''); setDebtNote('');
+  }
   function confirmSettle(){
     const amt = Number(amount);
     if(!amt || amt<=0){ showToast('مبلغ رو درست وارد کن'); return; }
