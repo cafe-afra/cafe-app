@@ -1341,11 +1341,45 @@ function calcInvoiceTotals(invoice){
       </div>
     </div>
 
-    <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, minHeight:200}}>
-      <div style={{textAlign:'center', color:'#8A7B6C', paddingTop:40}}>
-        به زودی قابلیت چت و آپلود عکس فعال می‌شود...
-      </div>
+<div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, minHeight:280, display:'flex', flexDirection:'column'}}>
+  
+  <div style={{flex:1, overflowY:'auto', marginBottom:12, fontSize:14, color:'#2E2019'}}>
+    <div style={{textAlign:'center', color:'#8A7B6C', padding:'30px 10px'}}>
+      هنوز پیامی نفرستادی.<br/>اینجا می‌تونی سوال بپرسی یا دستور بدی.
     </div>
+  </div>
+
+  <div style={{display:'flex', gap:8}}>
+    <input 
+      type="text" 
+      placeholder="پیامت رو بنویس..." 
+      style={{
+        flex:1, 
+        padding:'11px 14px', 
+        border:'1px solid #E7DECB', 
+        borderRadius:10, 
+        fontSize:14, 
+        fontFamily:'inherit',
+        background:'#fdfbf7'
+      }}
+    />
+    <button 
+      style={{
+        background:'#B5651D', 
+        color:'#fff', 
+        border:'none', 
+        borderRadius:10, 
+        padding:'0 18px', 
+        fontWeight:700, 
+        fontSize:14,
+        fontFamily:'inherit',
+        cursor:'pointer'
+      }}
+    >
+      ارسال
+    </button>
+  </div>
+</div>
   </div>
 )}
       </div>
