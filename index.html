@@ -1332,10 +1332,22 @@ function calcInvoiceTotals(invoice){
         {tab==='inventory' && <InventoryTab ingredients={ingredients} onSave={persistIngredients} showToast={showToast} />}
         {tab==='accounting' && <AccountingTab ingredients={ingredients} onRestockIngredient={restockIngredientDirect} showToast={showToast} todaySales={todaySales} onRemoveSale={removeFinalizedEntry} />}
         {tab==='debtors' && <DebtorsTab debtors={debtors} onSave={persistDebtors} onSettle={settleDebt} showToast={showToast} />}
-        {tab==='ai' && <div className="content" style={{padding:20, textAlign:'center'}}>
-  <h3>دستیار هوشمند</h3>
-  <p>این بخش به زودی فعال می‌شود...</p>
-</div>}
+        {tab==='ai' && (
+  <div className="content" style={{padding:'16px', maxWidth:520, margin:'0 auto'}}>
+    <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, marginBottom:16}}>
+      <div style={{fontSize:16, fontWeight:700, marginBottom:8}}>🤖 دستیار هوشمند کافه</div>
+      <div style={{fontSize:13, color:'#8A7B6C', lineHeight:1.6}}>
+        اینجا می‌تونی با چت یا فرستادن عکس فاکتور، موجودی و قیمت‌ها رو مدیریت کنی.
+      </div>
+    </div>
+
+    <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, minHeight:200}}>
+      <div style={{textAlign:'center', color:'#8A7B6C', paddingTop:40}}>
+        به زودی قابلیت چت و آپلود عکس فعال می‌شود...
+      </div>
+    </div>
+  </div>
+)}
       </div>
       <BottomNav tab={tab} setTab={setTab} />
 
