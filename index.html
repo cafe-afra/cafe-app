@@ -1341,45 +1341,75 @@ function calcInvoiceTotals(invoice){
       </div>
     </div>
 
-<div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, minHeight:280, display:'flex', flexDirection:'column'}}>
-  
-  <div style={{flex:1, overflowY:'auto', marginBottom:12, fontSize:14, color:'#2E2019'}}>
-    <div style={{textAlign:'center', color:'#8A7B6C', padding:'30px 10px'}}>
-      هنوز پیامی نفرستادی.<br/>اینجا می‌تونی سوال بپرسی یا دستور بدی.
-    </div>
-  </div>
+    <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, minHeight:280, display:'flex', flexDirection:'column'}}>
+      
+      <div id="ai-messages" style={{flex:1, overflowY:'auto', marginBottom:12, fontSize:14, color:'#2E2019'}}>
+        <div style={{textAlign:'center', color:'#8A7B6C', padding:'30px 10px'}}>
+          هنوز پیامی نفرستادی.<br/>اینجا می‌تونی سوال بپرسی یا دستور بدی.
+        </div>
+      </div>
 
-  <div style={{display:'flex', gap:8}}>
-    <input 
-      type="text" 
-      placeholder="پیامت رو بنویس..." 
-      style={{
-        flex:1, 
-        padding:'11px 14px', 
-        border:'1px solid #E7DECB', 
-        borderRadius:10, 
-        fontSize:14, 
-        fontFamily:'inherit',
-        background:'#fdfbf7'
-      }}
-    />
-    <button 
-      style={{
-        background:'#B5651D', 
-        color:'#fff', 
-        border:'none', 
-        borderRadius:10, 
-        padding:'0 18px', 
-        fontWeight:700, 
-        fontSize:14,
-        fontFamily:'inherit',
-        cursor:'pointer'
-      }}
-    >
-      ارسال
-    </button>
-  </div>
-</div>
+      <div style={{display:'flex', gap:8}}>
+        <input 
+          id="ai-input"
+          type="text" 
+          placeholder="پیامت رو بنویس..." 
+          style={{
+            flex:1, 
+            padding:'11px 14px', 
+            border:'1px solid #E7DECB', 
+            borderRadius:10, 
+            fontSize:14, 
+            fontFamily:'inherit',
+            background:'#fdfbf7'
+          }}
+        />
+        <button 
+          onClick={() => {
+            const input = document.getElementById('ai-input');
+            const messages = document.getElementById('ai-messages');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            // پاک کردن پیام اولیه
+            if(messages.innerText.includes('هنوز پیامی نفرستادی')){
+              messages.innerHTML = '';
+            }
+            
+            // اضافه کردن پیام کاربر
+            const userMsg = document.createElement('div');
+            userMsg.style.cssText = 'background:#F5EFE3; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right;';
+            userMsg.innerText = text;
+            messages.appendChild(userMsg);
+            
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+            
+            // فعلاً یه پاسخ ساده
+            setTimeout(() => {
+              const botMsg = document.createElement('div');
+              botMsg.style.cssText = 'background:#E6EDE3; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right;';
+              botMsg.innerText = 'پیامت دریافت شد. به زودی به هوش مصنوعی وصل می‌شم...';
+              messages.appendChild(botMsg);
+              messages.scrollTop = messages.scrollHeight;
+            }, 500);
+          }}
+          style={{
+            background:'#B5651D', 
+            color:'#fff', 
+            border:'none', 
+            borderRadius:10, 
+            padding:'0 18px', 
+            fontWeight:700, 
+            fontSize:14,
+            fontFamily:'inherit',
+            cursor:'pointer'
+          }}
+        >
+          ارسال
+        </button>
+      </div>
+    </div>
   </div>
 )}
       </div>
