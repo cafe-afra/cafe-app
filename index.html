@@ -1510,14 +1510,14 @@ function SyncModal({onClose}){
   );
 }
 
-function BottomNav({tab, setTab}){
-  const items = [
-    {id:'sell', icon:'🛒', label:'فروش'},
-    {id:'products', icon:'🍽️', label:'محصولات'},
-    {id:'inventory', icon:'📦', label:'انبار'},
-    {id:'accounting', icon:'🧮', label:'حسابداری'},
-    {id:'debtors', icon:'🧾', label:'بدهکاران'},
-  ];
+const items = [
+  {id:'sell', icon:'🛒', label:'فروش'},
+  {id:'products', icon:'📦', label:'محصولات'},
+  {id:'inventory', icon:'📦', label:'انبار'},
+  {id:'accounting', icon:'📊', label:'حسابداری'},
+  {id:'debtors', icon:'👥', label:'بدهکاران'},
+  {id:'ai', icon:'🤖', label:'دستیار'},
+];
   return (
     <div className="bottom-nav">
       {items.map(it => (
