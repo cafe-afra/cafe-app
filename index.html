@@ -1337,7 +1337,7 @@ function calcInvoiceTotals(invoice){
     <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, marginBottom:16}}>
       <div style={{fontSize:16, fontWeight:700, marginBottom:8}}>🤖 دستیار هوشمند کافه</div>
       <div style={{fontSize:13, color:'#8A7B6C', lineHeight:1.6}}>
-        اینجا می‌تونی با چت یا فرستادن عکس فاکتور، موجودی و قیمت‌ها رو مدیریت کنی.
+        اینجا می‌تونی با چت سوال بپرسی یا دستور بدی.
       </div>
     </div>
 
@@ -1363,40 +1363,99 @@ function calcInvoiceTotals(invoice){
             fontFamily:'inherit',
             background:'#fdfbf7'
           }}
+          onKeyDown={(e)=>{ if(e.key==='Enter') document.getElementById('ai-send-btn').click(); }}
         />
         <button 
-          onClick={() => {
+          id="ai-send-btn"
+          onClick={async () => {
             const input = document.getElementById('ai-input');
             const messages = document.getElementById('ai-messages');
             const text = input.value.trim();
             if(!text) return;
-            
+
             // پاک کردن پیام اولیه
             if(messages.innerText.includes('هنوز پیامی نفرستادی')){
               messages.innerHTML = '';
             }
-            
-            // اضافه کردن پیام کاربر
+
+            // پیام کاربر
             const userMsg = document.createElement('div');
             userMsg.style.cssText = 'background:#F5EFE3; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right;';
             userMsg.innerText = text;
             messages.appendChild(userMsg);
-            
             input.value = '';
             messages.scrollTop = messages.scrollHeight;
-            
-            // فعلاً یه پاسخ ساده
-            setTimeout(() => {
+
+            // پیام "در حال فکر کردن..."
+            const loadingMsg = document.createElement('div');
+            loadingMsg.id = 'ai-loading';
+            loadingMsg.style.cssText = 'background:#E6EDE3; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right; color:#5C7A5C;';
+            loadingMsg.innerText = 'در حال فکر کردن...';
+            messages.appendChild(loadingMsg);
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+              // ========== اینجا کلیدت رو بذار ==========
+              const API_KEY = 'اینجا_کلید_API_خودت_رو_بذار';
+              // ========================================
+
+              const response = await fetch('https://1xai.ir/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + API_KEY
+                },
+                body: JSON.stringify({
+                  model: 'gpt-4o-mini',
+                  messages: [
+                    {role: 'system', content: 'تو دستیار هوشمند یک کافه هستی. به فارسی و مختصر و مفید جواب بده.'},
+                    {role: 'user', content: text}
+                  ]
+                })
+              });
+
+              const data = await response.json();
+              const reply = data.choices?.[0]?.message?.content || 'متأسفانه جوابی دریافت نشد.';
+
+              // حذف پیام "در حال فکر کردن"
+              const loading = document.getElementById('ai-loading');
+              if(loading) loading.remove();
+
+              // پیام هوش مصنوعی
               const botMsg = document.createElement('div');
               botMsg.style.cssText = 'background:#E6EDE3; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right;';
-              botMsg.innerText = 'پیامت دریافت شد. به زودی به هوش مصنوعی وصل می‌شم...';
+              botMsg.innerText = reply;
               messages.appendChild(botMsg);
               messages.scrollTop = messages.scrollHeight;
-            }, 500);
+
+            } catch(err) {
+              const loading = document.getElementById('ai-loading');
+              if(loading) loading.remove();
+
+              const errorMsg = document.createElement('div');
+              errorMsg.style.cssText = 'background:#FBEAE6; padding:10px 14px; border-radius:12px; margin-bottom:8px; text-align:right; color:#B5533C;';
+              errorMsg.innerText = 'خطا در ارتباط با هوش مصنوعی. کلید API یا اینترنت رو چک کن.';
+              messages.appendChild(errorMsg);
+            }
           }}
           style={{
             background:'#B5651D', 
             color:'#fff', 
+            border:'none', 
+            borderRadius:10, 
+            padding:'0 18px', 
+            fontWeight:700, 
+            fontSize:14,
+            fontFamily:'inherit',
+            cursor:'pointer'
+          }}
+        >
+          ارسال
+        </button>
+      </div>
+    </div>
+  </div>
+)}
             border:'none', 
             borderRadius:10, 
             padding:'0 18px', 
