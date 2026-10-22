@@ -1662,6 +1662,9 @@ function SyncModal({onClose}){
     setBusy(false);
   }
 
+    useEffect(()=>{
+    try{ localStorage.setItem('cafeAiChat', JSON.stringify(msgs.slice(-40))); }catch(e){}
+  }, [msgs]);
   const bubble = {padding:'10px 14px', borderRadius:12, marginBottom:8, textAlign:'right', whiteSpace:'pre-wrap', lineHeight:1.7};
   const colors = {
     user:{background:'#F5EFE3'},
