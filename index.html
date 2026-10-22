@@ -1657,7 +1657,7 @@ function SyncModal({onClose}){
   }
   async function send(){
     const t = text.trim();
-    if(!t || busy) return;
+    if((!t && !img) || busy) return;
     const next = [...msgs, {role:'user', text:t}];
     setMsgs(next);
     setText('');
