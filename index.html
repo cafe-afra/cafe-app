@@ -1624,7 +1624,9 @@ function SyncModal({onClose}){
 }
 
   function AssistantTab(){
-  const [msgs, setMsgs] = useState([]);
+  const [msgs, setMsgs] = useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('cafeAiChat')||'[]'); }catch(e){ return []; }
+  });
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
