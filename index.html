@@ -1622,6 +1622,82 @@ function SyncModal({onClose}){
   );
 }
 
+  function AssistantTab(){
+  const [msgs, setMsgs] = useState([]);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const endRef = useRef(null);
+
+  useEffect(()=>{
+    if(endRef.current) endRef.current.scrollIntoView({behavior:'smooth', block:'end'});
+  }, [msgs, busy]);
+
+  async function send(){
+    const t = text.trim();
+    if(!t || busy) return;
+    const next = [...msgs, {role:'user', text:t}];
+    setMsgs(next);
+    setText('');
+    setBusy(true);
+    try{
+      const history = next
+        .filter(m => m.role==='user' || m.role==='assistant')
+        .slice(-10)
+        .map(m => ({role:m.role, content:m.text}));
+      const res = await fetch(API_BASE+'ai.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({messages: history})
+      });
+      const data = await res.json();
+      setMsgs(m => [...m, data.reply
+        ? {role:'assistant', text:data.reply}
+        : {role:'error', text: data.error || 'جوابی دریافت نشد.'}]);
+    }catch(e){
+      setMsgs(m => [...m, {role:'error', text:'خطا در ارتباط. اینترنت را چک کن.'}]);
+    }
+    setBusy(false);
+  }
+
+  const bubble = {padding:'10px 14px', borderRadius:12, marginBottom:8, textAlign:'right', whiteSpace:'pre-wrap', lineHeight:1.7};
+  const colors = {
+    user:{background:'#F5EFE3'},
+    assistant:{background:'#E6EDE3'},
+    error:{background:'#FBEAE6', color:'#B5533C'}
+  };
+
+  return (
+    <div className="content" style={{maxWidth:520, margin:'0 auto'}}>
+      <div className="card">
+        <div style={{fontSize:16, fontWeight:700, marginBottom:6}}>🤖 دستیار هوشمند کافه</div>
+        <div className="item-sub">درباره‌ی فروش، انبار، بدهکارها و منو سوال بپرس.</div>
+      </div>
+      <div className="card" style={{minHeight:280}}>
+        <div style={{marginBottom:12, fontSize:14}}>
+          {msgs.length===0 && (
+            <div className="empty-state">هنوز پیامی نفرستادی.</div>
+          )}
+          {msgs.map((m,i)=>(
+            <div key={i} style={{...bubble, ...colors[m.role]}}>{m.text}</div>
+          ))}
+          {busy && <div style={{...bubble, ...colors.assistant, color:'#5C7A5C'}}>در حال فکر کردن...</div>}
+          <div ref={endRef}></div>
+        </div>
+        <div className="row">
+          <input
+            type="text"
+            value={text}
+            placeholder="پیامت رو بنویس..."
+            style={{marginBottom:0}}
+            onChange={e=>setText(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter') send(); }}
+          />
+          <button className="btn btn-sage" style={{flex:'none'}} onClick={send} disabled={busy}>ارسال</button>
+        </div>
+      </div>
+    </div>
+  );
+}
   function BottomNav({tab, setTab}){
 const items = [
   {id:'sell', icon:'🛒', label:'فروش'},
