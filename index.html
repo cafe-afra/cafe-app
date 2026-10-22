@@ -1636,6 +1636,25 @@ function SyncModal({onClose}){
     if(endRef.current) endRef.current.scrollIntoView({behavior:'smooth', block:'end'});
   }, [msgs, busy]);
 
+    function pickImage(e){
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, 1280/Math.max(im.width, im.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(im.width*k);
+        c.height = Math.round(im.height*k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        setImg(c.toDataURL('image/jpeg', 0.75));
+      };
+      im.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
   async function send(){
     const t = text.trim();
     if(!t || busy) return;
