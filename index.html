@@ -1672,7 +1672,7 @@ function SyncModal({onClose}){
       const res = await fetch(API_BASE+'ai.php', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({messages: history})
+        body: JSON.stringify({messages: history, image: sendImg})
       });
       const data = await res.json();
       setMsgs(m => [...m, data.reply
