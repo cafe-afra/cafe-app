@@ -1402,7 +1402,7 @@ function calcInvoiceTotals(invoice){
               });
 
               const data = await response.json();
-              const reply = data.choices?.[0]?.message?.content || 'متأسفانه جوابی دریافت نشد.';
+              const reply = data.reply || data.error || 'متأسفانه جوابی دریافت نشد.';
 
               // حذف پیام "در حال فکر کردن"
               const loading = document.getElementById('ai-loading');
