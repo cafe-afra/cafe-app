@@ -1711,6 +1711,12 @@ function SyncModal({onClose}){
           ))}
           {busy && <div style={{...bubble, ...colors.assistant, color:'#5C7A5C'}}>در حال فکر کردن...</div>}
           <div ref={endRef}></div>
+          <input id="ai-file" type="file" accept="image/*" style={{display:'none'}} onChange={pickImage} />
+          {img && <img src={img} alt="" style={{maxWidth:120, maxHeight:120, borderRadius:8, display:'block', marginBottom:6}} />}
+          <div style={{display:'flex', gap:8}}>
+            <button className="btn btn-ghost btn-small" onClick={()=>document.getElementById('ai-file').click()}>📷 عکس</button>
+            {img && <button className="btn btn-danger btn-small" onClick={()=>setImg(null)}>حذف عکس</button>}
+          </div>
         </div>
         <div className="row">
           <input
