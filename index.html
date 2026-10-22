@@ -1630,6 +1630,7 @@ function SyncModal({onClose}){
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
+    const [img, setImg] = useState(null);
 
   useEffect(()=>{
     if(endRef.current) endRef.current.scrollIntoView({behavior:'smooth', block:'end'});
