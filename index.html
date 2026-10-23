@@ -1359,7 +1359,7 @@ function calcInvoiceTotals(invoice){
         {tab==='inventory' && <InventoryTab ingredients={ingredients} onSave={persistIngredients} showToast={showToast} />}
         {tab==='accounting' && <AccountingTab ingredients={ingredients} onRestockIngredient={restockIngredientDirect} showToast={showToast} todaySales={todaySales} onRemoveSale={removeFinalizedEntry} />}
         {tab==='debtors' && <DebtorsTab debtors={debtors} onSave={persistDebtors} onSettle={settleDebt} showToast={showToast} />}
-        {tab==='ai' && <AssistantTab />}
+        {tab==='ai' && <AssistantTab ingredients={ingredients} onApplyPurchase={applyPurchase} />}
         {false && tab==='ai' && (
   <div className="content" style={{padding:'16px', maxWidth:520, margin:'0 auto'}}>
     <div style={{background:'#fff', border:'1px solid #E7DECB', borderRadius:14, padding:16, marginBottom:16}}>
