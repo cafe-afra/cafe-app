@@ -1684,6 +1684,29 @@ function SyncModal({onClose}){
     };
     reader.readAsDataURL(file);
   }
+    async function scanInvoice(){
+    if(!img || scanning) return;
+    const pic = img;
+    setScanning(true);
+    try{
+      const res = await fetch(API_BASE+'invoice.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({image: pic})
+      });
+      const data = await res.json();
+      if(data.invoice){
+        setReview(data.invoice);
+        setImg(null);
+        window.scrollTo({top:0, behavior:'smooth'});
+      }else{
+        setMsgs(m => [...m, {role:'error', text: data.error || 'فاکتور خوانده نشد.'}]);
+      }
+    }catch(e){
+      setMsgs(m => [...m, {role:'error', text:'خطا در ارتباط. اینترنت را چک کن.'}]);
+    }
+    setScanning(false);
+  }
   async function send(){
     const t = text.trim();
     if((!t && !img) || busy) return;
