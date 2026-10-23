@@ -1787,6 +1787,200 @@ function SyncModal({onClose}){
     </div>
   );
 }
+  // ---------------- فاکتور خرید: جدول بازبینی ----------------
+function toNum(v){
+  if(typeof v==='number') return v;
+  const map = {'۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9','٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+  const s = String(v==null ? '' : v).replace(/[۰-۹٠-٩]/g, d=>map[d]).replace(/[,،٬\s]/g,'').replace(/٫/g,'.');
+  if(s==='') return NaN;
+  const n = Number(s);
+  return isFinite(n) ? n : NaN;
+}
+function unitInfo(u){
+  const s = String(u||'').replace(/[\s\u200c]/g,'').toLowerCase();
+  if(['کیلو','کیلوگرم','kg','کگ'].includes(s)) return {f:'m', v:1000};
+  if(['گرم','gr','g'].includes(s)) return {f:'m', v:1};
+  if(['لیتر','l','lit'].includes(s)) return {f:'v', v:1000};
+  if(['میلیلیتر','سیسی','cc','ml'].includes(s)) return {f:'v', v:1};
+  if(['عدد','تا'].includes(s)) return {f:'c', v:1};
+  return null;
+}
+function guessFactor(invUnit, ingUnit){
+  const a = unitInfo(invUnit), b = unitInfo(ingUnit);
+  if(a && b && a.f===b.f) return a.v / b.v;
+  return null;
+}
+function invMemGet(){ try{ return JSON.parse(localStorage.getItem('cafeInvoiceMem')||'{}'); }catch(e){ return {}; } }
+function invMemSet(m){ try{ localStorage.setItem('cafeInvoiceMem', JSON.stringify(m)); }catch(e){} }
+
+function InvoiceReview({draft, ingredients, onApply, onClose}){
+  const mem = invMemGet();
+  const [cur, setCur] = useState(mem.cur || (draft.currency==='تومان' ? 'toman' : 'rial'));
+  const [rows, setRows] = useState(()=> (draft.items||[]).map((it,i)=>{
+    const name = String(it.name || '?');
+    let ingId = (mem.alias||{})[name] || '';
+    if(!ingId && it.match) ingId = it.match;
+    if(ingId && !ingredients.some(g=>g.id===ingId)) ingId = '';
+    const ing = ingredients.find(g=>g.id===ingId);
+    let f = null;
+    if(ing){
+      const saved = (mem.factor||{})[ingId+'|'+(it.unit||'')];
+      f = (saved!=null) ? saved : guessFactor(it.unit, ing.unit);
+    }
+    return {k:i, name, qty:String(it.qty==null ? '' : it.qty), unit:String(it.unit||''), total:String(it.total==null ? '' : it.total), ingId, factor:(f==null ? '' : String(f))};
+  }));
+  const [invTotal, setInvTotal] = useState(draft.invoiceTotal!=null ? String(draft.invoiceTotal) : '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const rate = cur==='rial' ? 0.1 : 1;
+  const curLabel = cur==='rial' ? 'ریال' : 'تومان';
+
+  function upd(k, patch){ setRows(rs=>rs.map(r=> r.k===k ? {...r, ...patch} : r)); }
+  function pickIng(k, ingId){
+    setRows(rs=>rs.map(r=>{
+      if(r.k!==k) return r;
+      const ing = ingredients.find(g=>g.id===ingId);
+      let f = '';
+      if(ing){
+        const saved = (invMemGet().factor||{})[ingId+'|'+r.unit];
+        const g = (saved!=null) ? saved : guessFactor(r.unit, ing.unit);
+        f = (g==null) ? '' : String(g);
+      }
+      return {...r, ingId, factor:f};
+    }));
+  }
+  function changeUnit(k, u){
+    setRows(rs=>rs.map(r=>{
+      if(r.k!==k) return r;
+      const ing = ingredients.find(g=>g.id===r.ingId);
+      const g = ing ? guessFactor(u, ing.unit) : null;
+      return {...r, unit:u, factor:(g!=null ? String(g) : r.factor)};
+    }));
+  }
+  function calc(r){
+    const ing = ingredients.find(g=>g.id===r.ingId);
+    const qty = toNum(r.qty), f = toNum(r.factor), tot = toNum(r.total);
+    const priceToman = isNaN(tot) ? NaN : tot*rate;
+    const ingQty = (ing && !isNaN(qty) && !isNaN(f)) ? qty*f : NaN;
+    const unitCost = (!isNaN(ingQty) && ingQty>0 && !isNaN(priceToman)) ? priceToman/ingQty : NaN;
+    return {ing, qty, f, priceToman, ingQty, unitCost};
+  }
+
+  const sumRows = rows.reduce((s,r)=>{ const t = toNum(r.total); return s + (isNaN(t) ? 0 : t); }, 0);
+  const totN = toNum(invTotal);
+  const finalTotal = isNaN(totN) ? sumRows : totN;
+  const mismatch = !isNaN(totN) && sumRows>0 && Math.abs(sumRows-totN)/totN > 0.02;
+
+  async function apply(){
+    setErr('');
+    const lines = [];
+    for(const r of rows){
+      if(!r.ingId) continue;
+      const c = calc(r);
+      if(!(c.ingQty>0) || isNaN(c.priceToman)){
+        setErr('برای «'+r.name+'» مقدار، ضریب تبدیل و مبلغ را کامل کن.');
+        return;
+      }
+      lines.push({ingredientId:r.ingId, qty:c.ingQty, price:c.priceToman});
+    }
+    const totalToman = Math.round(finalTotal*rate);
+    if(!(totalToman>0)){ setErr('مبلغ کل فاکتور معلوم نیست.'); return; }
+    const names = rows.map(r=>r.name).slice(0,5).join('، ');
+    const note = 'فاکتور خرید — '+rows.length+' قلم: '+names+(rows.length>5 ? ' ...' : '');
+
+    const m = invMemGet();
+    m.alias = m.alias || {};
+    m.factor = m.factor || {};
+    m.cur = cur;
+    rows.forEach(r=>{
+      if(!r.ingId) return;
+      m.alias[r.name] = r.ingId;
+      const f = toNum(r.factor);
+      if(!isNaN(f)) m.factor[r.ingId+'|'+r.unit] = f;
+    });
+    invMemSet(m);
+
+    setBusy(true);
+    try{ await onApply(lines, totalToman, note); onClose(); }
+    catch(e){ setErr('ثبت انجام نشد. دوباره امتحان کن.'); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card" style={{border:'2px solid var(--accent)'}}>
+      <div style={{fontSize:16, fontWeight:700, marginBottom:4}}>🧾 بازبینی فاکتور خرید</div>
+      <div className="item-sub" style={{marginBottom:10}}>اعداد را با فاکتور چک کن، ماده‌ی انبار هر ردیف را انتخاب کن و بعد تأیید بزن. تا تأیید نکنی چیزی ثبت نمی‌شود.</div>
+
+      <div className="row" style={{marginBottom:10}}>
+        <button className={"btn btn-small "+(cur==='rial' ? 'btn-sage' : 'btn-ghost')} style={{flex:1}} onClick={()=>setCur('rial')}>مبلغ‌های فاکتور: ریال</button>
+        <button className={"btn btn-small "+(cur==='toman' ? 'btn-sage' : 'btn-ghost')} style={{flex:1}} onClick={()=>setCur('toman')}>مبلغ‌های فاکتور: تومان</button>
+      </div>
+
+      {rows.length===0 && <div className="empty-state">ردیفی خوانده نشد.</div>}
+
+      {rows.map(r=>{
+        const c = calc(r);
+        const old = c.ing ? (Number(c.ing.costPerUnit)||0) : 0;
+        const pct = (old>0 && !isNaN(c.unitCost)) ? Math.round((c.unitCost-old)/old*100) : null;
+        return (
+          <div key={r.k} style={{border:'1px solid var(--line)', borderRadius:10, padding:10, marginBottom:8, background:'#fdfbf7'}}>
+            <div className="card-top">
+              <div className="item-name">{r.name}</div>
+              <button className="btn btn-danger btn-small" onClick={()=>setRows(rs=>rs.filter(x=>x.k!==r.k))}>✕</button>
+            </div>
+            <label>ماده‌ی انبار</label>
+            <select value={r.ingId} onChange={e=>pickIng(r.k, e.target.value)}>
+              <option value="">— فقط هزینه (بدون انبار) —</option>
+              {ingredients.map(g=><option key={g.id} value={g.id}>{g.name} ({g.unit})</option>)}
+            </select>
+            <div className="row">
+              <div style={{flex:1}}>
+                <label>مقدار</label>
+                <input type="text" inputMode="decimal" value={r.qty} onChange={e=>upd(r.k, {qty:e.target.value})} />
+              </div>
+              <div style={{flex:1}}>
+                <label>واحد فاکتور</label>
+                <input type="text" value={r.unit} onChange={e=>changeUnit(r.k, e.target.value)} />
+              </div>
+            </div>
+            {r.ingId && (
+              <div>
+                <label>هر ۱ «{r.unit || 'واحد'}» = چند {c.ing ? c.ing.unit : ''}؟</label>
+                <input type="text" inputMode="decimal" value={r.factor} onChange={e=>upd(r.k, {factor:e.target.value})} placeholder="مثلاً ۱۰۰۰" />
+              </div>
+            )}
+            <label>مبلغ کل این ردیف ({curLabel})</label>
+            <input type="text" inputMode="decimal" value={r.total} onChange={e=>upd(r.k, {total:e.target.value})} />
+            {c.ing && !isNaN(c.ingQty) && (
+              <div className="item-sub">موجودی: {fmt(c.ing.stock)} ← {fmt(Math.round(((Number(c.ing.stock)||0)+c.ingQty)*1000)/1000)} {c.ing.unit}</div>
+            )}
+            {c.ing && !isNaN(c.unitCost) && (
+              <div className="item-sub">
+                قیمت هر {c.ing.unit}: {fmt(old)} ← {fmt(Math.round(c.unitCost*100)/100)} تومان
+                {pct!==null && pct!==0 && (
+                  <span style={{color: pct>0 ? 'var(--warn)' : 'var(--sage)', fontWeight:700}}> ({pct>0 ? '↑' : '↓'} {fmt(Math.abs(pct))}٪)</span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <label>مبلغ کل فاکتور ({curLabel}) — به‌عنوان یک هزینه‌ی «خرید مواد اولیه» ثبت می‌شود</label>
+      <input type="text" inputMode="decimal" value={invTotal} onChange={e=>setInvTotal(e.target.value)} placeholder={sumRows ? String(sumRows) : ''} />
+      <div className="item-sub">جمع ردیف‌ها: {fmt(sumRows)} {curLabel}</div>
+      {mismatch && <div style={{color:'var(--warn)', fontSize:12, marginTop:4}}>جمع ردیف‌ها با مبلغ کل فرق دارد (تخفیف یا مالیات؟). هزینه با «مبلغ کل» ثبت می‌شود.</div>}
+      <div className="item-sub" style={{marginTop:4}}>هزینه‌ی ثبت‌شده: {fmt(Math.round(finalTotal*rate))} تومان</div>
+      {err && <div style={{color:'var(--warn)', fontSize:13, fontWeight:700, marginTop:8}}>{err}</div>}
+
+      <div className="finalize-row" style={{marginTop:12}}>
+        <button className="btn btn-primary" disabled={busy || rows.length===0} onClick={apply}>{busy ? 'در حال ثبت...' : '✅ ثبت فاکتور'}</button>
+        <button className="btn btn-ghost" disabled={busy} onClick={onClose}>انصراف</button>
+      </div>
+    </div>
+  );
+}
   function BottomNav({tab, setTab}){
 const items = [
   {id:'sell', icon:'🛒', label:'فروش'},
