@@ -1748,6 +1748,7 @@ function SyncModal({onClose}){
 
   return (
     <div className="content" style={{maxWidth:520, margin:'0 auto'}}>
+      {review && <InvoiceReview draft={review} ingredients={ingredients||[]} onApply={onApplyPurchase} onClose={()=>setReview(null)} />}
       <div className="card">
         <div style={{fontSize:16, fontWeight:700, marginBottom:6}}>🤖 دستیار هوشمند کافه</div>
         <div className="item-sub">درباره‌ی فروش، انبار، بدهکارها و منو سوال بپرس.</div>
