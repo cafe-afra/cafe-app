@@ -1717,6 +1717,23 @@ function SyncModal({onClose}){
     setText('');
     setBusy(true);
     try{
+      if(!sendImg && looksLikePurchase(t)){
+        try{
+          const pr = await fetch(API_BASE+'purchase_text.php', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({text: t})
+          });
+          const pd = await pr.json();
+          if(pd && pd.invoice){
+            setReview(pd.invoice);
+            setMsgs(m => [...m, {role:'assistant', text:'فاکتور خرید را آماده کردم. بالای صفحه چک کن و «ثبت فاکتور» را بزن.'}]);
+            window.scrollTo({top:0, behavior:'smooth'});
+            setBusy(false);
+            return;
+          }
+        }catch(e){ /* اگر تحلیل خرید خطا داد، همان چت معمولی ادامه پیدا می‌کند */ }
+      }
       const history = next
         .filter(m => m.role==='user' || m.role==='assistant')
         .slice(-10)
