@@ -1650,7 +1650,7 @@ function SyncModal({onClose}){
   );
 }
 
-  function AssistantTab(){
+  function AssistantTab({ingredients, onApplyPurchase}){
   const [msgs, setMsgs] = useState(()=>{
     try{ return JSON.parse(localStorage.getItem('cafeAiChat')||'[]'); }catch(e){ return []; }
   });
