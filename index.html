@@ -1135,6 +1135,33 @@ function calcInvoiceTotals(invoice){
     persistIngredients(nextIng);
   }
 
+    // ثبت فاکتور خرید: موجودی و قیمت مواد را عوض می‌کند و کل مبلغ را به‌عنوان یک هزینه ثبت می‌کند
+  // lines: [{ingredientId, qty (به واحد انبار), price (مبلغ کل ردیف به تومان)}]
+  async function applyPurchase(lines, totalAmount, note){
+    const byId = {};
+    lines.forEach(l=>{
+      if(!l.ingredientId || !(l.qty>0)) return;
+      const b = byId[l.ingredientId] || (byId[l.ingredientId] = {qty:0, price:0});
+      b.qty += l.qty;
+      b.price += (l.price||0);
+    });
+    const nextIng = ingredientsRef.current.map(ing=>{
+      const b = byId[ing.id];
+      if(!b) return ing;
+      const updated = {...ing, stock: Math.round(((Number(ing.stock)||0) + b.qty)*1000)/1000};
+      if(b.price>0){ updated.costPerUnit = Math.round((b.price/b.qty)*1000)/1000; }
+      return updated;
+    });
+    await persistIngredients(nextIng);
+
+    const key = 'expenses:' + todayKey();
+    const raw = await storageGet(key);
+    let list = [];
+    try{ list = raw ? JSON.parse(raw) : []; }catch(e){ list = []; }
+    list.push({id:uid(), type:'ingredient', category:'خرید مواد اولیه', note, amount: totalAmount, time: nowFaTime()});
+    await storageSet(key, JSON.stringify(list));
+    showToast('✅ فاکتور ثبت شد؛ انبار و هزینه‌ها به‌روز شد');
+  }
   // ---- create a new pre-invoice ----
   function startInvoice(customerType, debtor){
     const invoice = {
