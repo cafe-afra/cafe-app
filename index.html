@@ -1649,7 +1649,7 @@ function SyncModal({onClose}){
         c.width = Math.round(im.width*k);
         c.height = Math.round(im.height*k);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        setImg(c.toDataURL('image/jpeg', 0.75));
+        setImg(c.toDataURL('image/jpeg', 0.85));
       };
       im.src = reader.result;
     };
