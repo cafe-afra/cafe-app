@@ -1769,6 +1769,7 @@ function SyncModal({onClose}){
           <div style={{display:'flex', gap:8}}>
             <button className="btn btn-ghost btn-small" onClick={()=>document.getElementById('ai-file').click()}>📷 عکس</button>
             {img && <button className="btn btn-danger btn-small" onClick={()=>setImg(null)}>حذف عکس</button>}
+            {img && <button className="btn btn-sage btn-small" disabled={scanning} onClick={scanInvoice}>{scanning ? 'در حال خواندن...' : '🧾 ثبت به‌عنوان فاکتور خرید'}</button>}
           </div>
         </div>
         <div className="row">
