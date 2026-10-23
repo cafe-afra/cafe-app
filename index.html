@@ -1644,7 +1644,7 @@ function SyncModal({onClose}){
     reader.onload = () => {
       const im = new Image();
       im.onload = () => {
-        const k = Math.min(1, 1280/Math.max(im.width, im.height));
+        const k = Math.min(1, 1800/Math.max(im.width, im.height));
         const c = document.createElement('canvas');
         c.width = Math.round(im.width*k);
         c.height = Math.round(im.height*k);
