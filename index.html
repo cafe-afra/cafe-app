@@ -1658,6 +1658,8 @@ function SyncModal({onClose}){
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
     const [img, setImg] = useState(null);
+    const [review, setReview] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(()=>{
     if(endRef.current) endRef.current.scrollIntoView({behavior:'smooth', block:'end'});
