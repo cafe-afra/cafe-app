@@ -1815,7 +1815,7 @@ function invMemSet(m){ try{ localStorage.setItem('cafeInvoiceMem', JSON.stringif
 
 function InvoiceReview({draft, ingredients, onApply, onClose}){
   const mem = invMemGet();
-  const [cur, setCur] = useState(mem.cur || (draft.currency==='تومان' ? 'toman' : 'rial'));
+  const [cur, setCur] = useState(draft.currency==='تومان' ? 'toman' : (draft.currency==='ریال' ? 'rial' : (mem.cur || 'rial')));
   const [rows, setRows] = useState(()=> (draft.items||[]).map((it,i)=>{
     const name = String(it.name || '?');
     let ingId = (mem.alias||{})[name] || '';
