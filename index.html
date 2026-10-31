@@ -2765,7 +2765,7 @@ return (
 {box('#EDE6F5', '#5B3F86', s.transferSales+s.transferSettle, '🔁 کارت‌به‌کارت '+period, 'فروش '+fmt(s.transferSales)+(s.transferSettle>0 ? (' + تسویه '+fmt(s.transferSettle)) : ''), 'transfer')}
 </div>
 <div className="row" style={{gap:8, marginBottom:8}}>
-{box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه', 'total')}
+{box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'نقد + کارت + نسیه', 'total')}
 {box('#FBEAE6', 'var(--warn)', s.expense, 'هزینه '+period, null, 'expense')}
 </div>
 <div className="row" style={{gap:8}}>
