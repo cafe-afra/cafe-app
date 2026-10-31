@@ -2679,6 +2679,12 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
             ))}
             <label>چقدر گرفتی؟</label>
             <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} />
+                        <label>روش دریافت</label>
+            <select value={settleMethod} onChange={e=>setSettleMethod(e.target.value)}>
+              <option value="cash">💵 نقد</option>
+              <option value="card">💳 کارت‌خوان</option>
+              <option value="transfer">🔁 کارت‌به‌کارت</option>
+            </select>
             <button className="btn btn-primary" onClick={confirmSettle}>ثبت دریافت</button>
             <div style={{height:8}}></div>
             <button className="btn btn-ghost btn-block" onClick={()=>setSettling(null)}>انصراف</button>
