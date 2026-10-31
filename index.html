@@ -3051,11 +3051,13 @@ return <div className="loading">در حال بارگذاری...</div>;
 const listDocs = !listKind ? [] : docSource.filter(t=>{
 if(listKind==='expense') return t.kind==='expense';
 if(t.kind!=='income') return false;
-if(listKind==='cash') return t.raw.type==='settlement' || !!t.raw.paid;
+if(listKind==='cash') return t.raw.type==='settlement' || (!!t.raw.paid && !t.raw.payMethod) || t.raw.payMethod==='cash';
+if(listKind==='card') return t.raw.payMethod==='card';
+if(listKind==='transfer') return t.raw.payMethod==='transfer';
 if(listKind==='credit') return t.raw.type!=='settlement' && !t.raw.paid;
 return t.raw.type!=='settlement';
 });
-const listTitles = {cash:'💵 نقد دریافتی', credit:'🕓 فاکتورهای نسیه', total:'🧾 همه‌ی فاکتورهای فروش', expense:'هزینه‌ها'};
+const listTitles = {card:'💳 کارت‌خوان', transfer:'🔁 کارت‌به‌کارت', cash:'💵 نقد دریافتی', credit:'🕓 فاکتورهای نسیه', total:'🧾 همه‌ی فاکتورهای فروش', expense:'هزینه‌ها'};
 const listSum = listDocs.reduce((a,t)=>a+t.amount,0);
 const todayTotal = todayExpenses.filter(e=>e.type!=='cashclose').reduce((s,e)=>s+(Number(e.amount)||0),0);
 return (
