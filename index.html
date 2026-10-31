@@ -1230,17 +1230,17 @@ function calcInvoiceTotals(invoice){
   }
 
   // ---- finalize as cash ----
-  function finalizeCash(invoice){
+    function finalizeCash(invoice, method='cash'){
     const totals = calcInvoiceTotals(invoice);
     const entry = {
       id: uid(), type:'invoice', items: invoice.items, ...totals,
-      paid:true, customerType:invoice.customerType, debtorId:invoice.debtorId, debtorName:invoice.debtorName, trackingToken:invoice.trackingToken||null,
+     paid:true, payMethod:method, customerType:invoice.customerType , debtorId:invoice.debtorId, debtorName:invoice.debtorName, trackingToken:invoice.trackingToken||null,
       time: nowFaTime(),
     };
     persistTodaySales([...todaySalesRef.current, entry]);
     persistOpenInvoices(openInvoicesRef.current.filter(i=>i.id!==invoice.id));
     setActiveInvoiceId(null);
-    showToast('✅ نقد ثبت شد');
+        showToast(method==='card' ? '💳 کارت‌خوان ثبت شد' : method==='transfer' ? '🔁 کارت‌به‌کارت ثبت شد' : '✅ نقد ثبت شد');
   }
 
   // ---- finalize as credit, tied to a debtor ----
