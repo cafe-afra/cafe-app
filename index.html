@@ -2189,8 +2189,12 @@ function InvoiceWorkspace({invoice, products, ingredients, onAddItem, onChangeQt
         <div className="totals-row final"><span>مبلغ نهایی</span><span>{fmt(totals.total)} تومان</span></div>
       </div>
 
+            <div className="finalize-row">
+        <button className="btn choice-btn paid" onClick={()=>onCash('cash')} disabled={invoice.items.length===0}>💵 نقد</button>
+        <button className="btn choice-btn paid" onClick={()=>onCash('card')} disabled={invoice.items.length===0}>💳 کارت‌خوان</button>
+      </div>
       <div className="finalize-row">
-        <button className="btn choice-btn paid" onClick={onCash} disabled={invoice.items.length===0}>✅ نقد گرفتم</button>
+        <button className="btn choice-btn paid" onClick={()=>onCash('transfer')} disabled={invoice.items.length===0}>🔁 کارت‌به‌کارت</button>
         <button className="btn choice-btn credit" onClick={onCredit} disabled={invoice.items.length===0}>🕓 نسیه</button>
       </div>
       <button className="btn btn-danger btn-block" style={{marginTop:8}} onClick={onCancel}>🗑 حذف کل پیش‌فاکتور</button>
