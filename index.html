@@ -2745,6 +2745,10 @@ return (
 {box('var(--sage-light)', 'var(--sage)', s.cashReceived, '💵 نقد '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''), 'cash')}
 {box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده', 'credit')}
 </div>
+  <div className="row" style={{gap:8, marginBottom:8}}>
+{box('#E3EDF7', '#2F5D8A', s.cardSales, '💳 کارت‌خوان '+period, null, 'card')}
+{box('#EDE6F5', '#5B3F86', s.transferSales, '🔁 کارت‌به‌کارت '+period, null, 'transfer')}
+</div>
 <div className="row" style={{gap:8, marginBottom:8}}>
 {box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه', 'total')}
 {box('#FBEAE6', 'var(--warn)', s.expense, 'هزینه '+period, null, 'expense')}
