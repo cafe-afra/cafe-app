@@ -1337,7 +1337,7 @@ function calcInvoiceTotals(invoice){
                         onQrStatusChange={updateQrOrderStatus}
             onBack={()=>setActiveInvoiceId(null)}
             onCancel={()=>cancelInvoice(activeInvoice)}
-            onCash={()=>finalizeCash(activeInvoice)}
+            onCash={(m)=>finalizeCash(activeInvoice, m)}
             onCredit={()=>{
               if(activeInvoice.customerType==='debtor'){
                 const d = debtors.find(x=>x.id===activeInvoice.debtorId);
