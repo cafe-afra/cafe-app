@@ -3699,7 +3699,7 @@ const monthCategories =
                 <div className="modal">
                   <div className="modal-title">🧾 فاکتور — {o.time}</div>
                   <div className="item-sub" style={{marginBottom:10}}>
-                    {o.type==='settlement' ? 'دریافت تسویه' : (o.paid ? 'نقدی' : 'نسیه')}
+                    {o.type==='settlement' ? 'دریافت تسویه' : (o.paid ? payMethodName(o) : 'نسیه')}
                     {o.debtorName ? ' · ' + o.debtorName : ''}
                   </div>
                   {o.type==='settlement' && <div className="item-name">{o.name}</div>}
