@@ -2540,6 +2540,7 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
   const [newDisc, setNewDisc] = useState('0');
   const [settling, setSettling] = useState(null);
   const [amount, setAmount] = useState('');
+    const [settleMethod, setSettleMethod] = useState('cash');
   const [expanded, setExpanded] = useState(null);
   const [addingDebt, setAddingDebt] = useState(null);
   const [debtAmount, setDebtAmount] = useState('');
@@ -2564,6 +2565,7 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
   function openSettle(d){
     setSettling(d);
     setAmount(String(d.balance));
+        setSettleMethod('cash');
   }
   function confirmAddDebt(){
     const amt = Number(debtAmount);
@@ -2580,7 +2582,7 @@ function DebtorsTab({debtors, onSave, onSettle, showToast}){
   function confirmSettle(){
     const amt = Number(amount);
     if(!amt || amt<=0){ showToast('مبلغ رو درست وارد کن'); return; }
-    onSettle(settling, amt);
+        onSettle(settling, amt, settleMethod);
     setSettling(null);
   }
 
