@@ -2742,7 +2742,7 @@ const profitPos = s.profit >= 0;
 return (
 <div style={{marginBottom:14}}>
 <div className="row" style={{gap:8, marginBottom:8}}>
-{box('var(--sage-light)', 'var(--sage)', s.received, '💵 نقد دریافتی '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''), 'cash')}
+{box('var(--sage-light)', 'var(--sage)', s.cashReceived, '💵 نقد '+period, 'فروش نقد '+fmt(s.cashSales)+(s.settle>0 ? (' + تسویه '+fmt(s.settle)) : ''), 'cash')}
 {box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده', 'credit')}
 </div>
 <div className="row" style={{gap:8, marginBottom:8}}>
