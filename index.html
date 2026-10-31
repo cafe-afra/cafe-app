@@ -1279,7 +1279,7 @@ function calcInvoiceTotals(invoice){
   }
 
   // settling pays off tab items oldest-first, so partially-paid days shrink correctly
-  async function settleDebt(debtor, amount){
+    async function settleDebt(debtor, amount, method='cash'){
     amount = Math.min(Number(amount)||0, Number(debtor.balance)||0);
     if(amount <= 0) return;
     let remaining = amount;
@@ -1293,7 +1293,7 @@ function calcInvoiceTotals(invoice){
     const newBalance = Math.max(0, Math.round((debtor.balance-amount)*10)/10);
     const nextDebtors = debtorsRef.current.map(d=> d.id===debtor.id ? {...d, balance:newBalance, tabItems: newBalance<=0 ? [] : newTabItems} : d);
     persistDebtors(nextDebtors);
-    const entry = {id:uid(), type:'settlement', name:'تسویه — ' + debtor.name, price:amount, qty:1, total:amount, paid:true, debtorId:debtor.id, time: nowFaTime()};
+    const entry = {id:uid(), type:'settlement', name:'تسویه — ' + debtor.name, price:amount, qty:1, total:amount, paid:true, payMethod:method, debtorId:debtor.id, time: nowFaTime()};
     persistTodaySales([...todaySalesRef.current, entry]);
     showToast('✅ دریافت از ' + debtor.name + ' ثبت شد');
   }
