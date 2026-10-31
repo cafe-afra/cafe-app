@@ -2960,7 +2960,7 @@ if(e.type==='cashclose') return;
 if(e.category && !ACC_EXP_BASE.includes(e.category) && !ACC_EXP_EXTRA.includes(e.category) && !customCats.includes(e.category)) customCats.push(e.category);
 });
 const expenseCategories = [...ACC_EXP_BASE, ...ACC_EXP_EXTRA, ...customCats];
-const incomeCategories = ['فروش نقد','فروش نسیه','تسویه بدهی'];
+const incomeCategories = ['فروش نقد','فروش کارت‌خوان','فروش کارت‌به‌کارت','فروش نسیه','تسویه بدهی'];
 const allCategories = filterType==='expense' ? expenseCategories : filterType==='income' ? incomeCategories : [...expenseCategories, ...incomeCategories];
 const combined = [];
 if(filterType!=='income'){
