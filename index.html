@@ -2730,13 +2730,16 @@ const cashReceived = cashSales + settle;
 const received = cashReceived + cardSales + transferSales + cardSettle + transferSettle;
 return {cashSales, cardSales, transferSales, creditSales, settle, cashReceived,cardSettle, transferSettle, totalSales: cashSales+cardSales+transferSales+creditSales, received, expense, profit: received-expense};
 }
+  function payMethodName(o){
+return o.payMethod==='card' ? 'کارت‌خوان' : o.payMethod==='transfer' ? 'کارت‌به‌کارت' : 'نقد';
+}
 function accSaleCategory(o){
 if(o.type==='settlement') return 'تسویه بدهی';
-return o.paid ? 'فروش نقد' : 'فروش نسیه';
+return o.paid ? 'فروش '+payMethodName(o) : 'فروش نسیه';
 }
 function accSaleLabel(o){
-if(o.type==='settlement') return o.name;
-return (o.paid ? 'فروش نقد' : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
+if(o.type==='settlement') return o.name + (o.payMethod ? ' — '+payMethodName(o) : '');
+return (o.paid ? 'فروش '+payMethodName(o) : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
 }
 function AccSummary({s, period, onOpen}){
 function box(bg, color, amount, label, sub, kind){
