@@ -3454,11 +3454,11 @@ return (
 
   function saleLabel(o){
     if(o.type==='settlement') return o.name;
-    return (o.paid ? 'فروش نقد' : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
+    return (o.paid ? 'فروش '+payMethodName(o) : 'فروش نسیه') + (o.debtorName ? ' — '+o.debtorName : (o.customerType!=='debtor' ? ' — مشتری غیرخودی' : ''));
   }
   function saleCategory(o){
     if(o.type==='settlement') return 'تسویه بدهی';
-    return o.paid ? 'فروش نقد' : 'فروش نسیه';
+    return o.paid ? 'فروش '+payMethodName(o) : 'فروش نسیه';
   }
 
   const combined = [];
