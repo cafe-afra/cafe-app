@@ -2704,16 +2704,19 @@ const h = Number(m[1]);
 return (h>=0 && h<=23) ? h : null;
 }
 function accSummary(sales, expenses){
-let cashSales=0, creditSales=0, settle=0;
+let cashSales=0, creditSales=0, settle=0, cardSales=0, transferSales=0;
 sales.forEach(o=>{
 const a = accAmt(o);
 if(o.type==='settlement') settle += a;
+else if(o.paid && o.payMethod==='card') cardSales += a;
+else if(o.paid && o.payMethod==='transfer') transferSales += a;
 else if(o.paid) cashSales += a;
 else creditSales += a;
 });
 const expense = expenses.filter(e=>e.type!=='cashclose').reduce((s,e)=>s+(Number(e.amount)||0),0);
-const received = cashSales + settle;
-return {cashSales, creditSales, settle, totalSales: cashSales+creditSales, received, expense, profit: received-expense};
+const cashReceived = cashSales + settle;
+const received = cashReceived + cardSales + transferSales;
+return {cashSales, cardSales, transferSales, creditSales, settle, cashReceived, totalSales: cashSales+cardSales+transferSales+creditSales, received, expense, profit: received-expense};
 }
 function accSaleCategory(o){
 if(o.type==='settlement') return 'تسویه بدهی';
