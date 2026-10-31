@@ -2758,8 +2758,8 @@ return (
 {box('#FFF3DC', '#9A6B14', s.creditSales, '🕓 نسیه '+period, 'هنوز دریافت نشده', 'credit')}
 </div>
   <div className="row" style={{gap:8, marginBottom:8}}>
-{box('#E3EDF7', '#2F5D8A', s.cardSales, '💳 کارت‌خوان '+period, null, 'card')}
-{box('#EDE6F5', '#5B3F86', s.transferSales, '🔁 کارت‌به‌کارت '+period, null, 'transfer')}
+{box('#E3EDF7', '#2F5D8A', s.cardSales+s.cardSettle, '💳 کارت‌خوان '+period, 'فروش '+fmt(s.cardSales)+(s.cardSettle>0 ? (' + تسویه '+fmt(s.cardSettle)) : ''), 'card')}
+{box('#EDE6F5', '#5B3F86', s.transferSales+s.transferSettle, '🔁 کارت‌به‌کارت '+period, 'فروش '+fmt(s.transferSales)+(s.transferSettle>0 ? (' + تسویه '+fmt(s.transferSettle)) : ''), 'transfer')}
 </div>
 <div className="row" style={{gap:8, marginBottom:8}}>
 {box('#EFE8DA', 'var(--ink)', s.totalSales, '🧾 کل فروش '+period, 'فروش نقد + نسیه', 'total')}
